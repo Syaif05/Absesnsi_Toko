@@ -65,3 +65,7 @@ Migrasi `0003_owner_management.sql` menambah telepon opsional karyawan, jam oper
 Pada 9 November 2026 schema dipasang pada project Supabase `absensi kita` (`zeegtujueffpmrymnoxu`) setelah konektor berhasil mengidentifikasinya dan memverifikasi database kosong. Migrasi 0004 memindahkan btree_gist dari public ke extensions serta membatasi izin execute fungsi event trigger bawaan. Verifikasi: 17 tabel dengan RLS, 5 migrasi Drizzle, tanpa employee/demo. Satu bisnis Absensi Kita disiapkan sebagai basis bootstrap owner.
 
 Koneksi plugin ke database sudah bekerja, tetapi DATABASE_URL lokal masih perlu diganti dengan PostgreSQL URI dari menu Connect, bukan Project API URL HTTPS. Uji koneksi runtime website/bootstrap tetap menunggu URI tersebut. Jangan menempel ulang file schema gabungan pada project ini; gunakan migrator untuk pembaruan selanjutnya.
+
+## Fase 5
+
+Migrasi 0005 menambahkan version/updated_at pada jadwal/template, is_active template, validasi jam dan indeks. Sudah diterapkan ke project absensi kita dan jurnal Drizzle terverifikasi menjadi 6; tabel jadwal/template cloud tetap kosong. Snapshot jadwal lama tidak diperbarui otomatis. Lihat `docs/scheduling.md` untuk aturan shift, status dan batas verifikasi runtime.

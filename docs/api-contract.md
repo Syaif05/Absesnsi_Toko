@@ -18,3 +18,22 @@ POST toko: `{name, code, address, lat, lng, radiusM?, isActive?, operatingHours?
 POST employee: `{fullName, code?, storeId?, status?, phone?, joinedAt?}`. Code kosong/tidak ada di API berarti otomatis hanya bila field dihilangkan; UI menghilangkan field kosong. joinedAt memakai YYYY-MM-DD. Response `{employee, temporaryPin}`; simpan PIN secara aman saat respons pertama. PATCH menerima subset field; perubahan code/status/storeId memerlukan `confirmSensitive:true`. storeId dan field opsional bisa null untuk mengosongkan. Role, businessId, hash dan credential tidak dapat dikirim melalui form ini.
 
 PATCH settings mengirim snapshot lengkap `{businessName, timezone, accent, radiusM, accuracyM, graceMinutes, version}` dari GET terakhir. version diperiksa secara atomik; konflik mengembalikan 409. Nama/branding/aturan hanya menyimpan data bisnis, tidak ada key API atau secret. Semua mutation membuat audit dalam transaksi yang sama.
+
+## API Fase 5 — Jadwal
+
+| Method | Endpoint | Aktor / isi |
+|---|---|---|
+| GET/POST | `/api/v1/shift-templates` | Owner: daftar / buat template |
+| GET/PATCH | `/api/v1/shift-templates/:id` | Owner: edit/nonaktif/aktif, version wajib |
+| GET | `/api/v1/schedule-people` | Owner: employee/owner aktif dalam usaha, pagination |
+| GET/POST | `/api/v1/schedules` | Owner: daftar mingguan / buat draft |
+| GET/PATCH | `/api/v1/schedules/:id` | Owner: edit atau publish/cancel |
+| GET | `/api/v1/me/schedules` | Login: published milik sesi sendiri |
+
+Template: `{name,startTime,endTime,crossesMidnight,graceMinutes,isActive}`; jam HH:mm. PATCH mengirim field lengkap ditambah `version`. Edit tidak mengubah jadwal yang sudah tersimpan.
+
+POST jadwal: `{employeeId,storeId,templateId:null|UUID,date,startTime,endTime,crossesMidnight}`. date YYYY-MM-DD; zona diambil server. POST tidak menerima status published. PATCH edit menerima field yang sama ditambah `version` dan `confirmWithAttendance` bila diperlukan.
+
+PATCH status: `{status:"published"|"cancelled",version,confirmed:true,confirmWithAttendance?:true}`. Transisi `draft → published/cancelled` dan `published → cancelled`; cancelled final. Konflik jadwal/versi/status adalah 409. Tidak ada endpoint hapus permanen.
+
+GET schedules memerlukan `from` dan `to` (tanggal akhir eksklusif, 1–31 hari); opsional employeeId/storeId/status/offset. Query menyertakan shift dari hari sebelumnya yang masih melintasi awal rentang. Pagination `{items,hasMore,nextOffset,timezone}` maksimal 50 baris; template/people juga pagination 50. GET me/schedules hanya menerima from/to/offset; identitas tidak boleh ditentukan client. Response waktu selalu ISO UTC dan menyertakan snapshot interpretasi jadwal.

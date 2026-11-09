@@ -42,10 +42,16 @@ Skema dan migrasi PostgreSQL sudah tersedia. Jalankan `pnpm test` untuk pengujia
 
 Halaman akun tersedia di `/login` dan `/account`. Tanpa database yang dikonfigurasi, login menampilkan layanan belum tersedia. Petunjuk bootstrap owner, konfigurasi dan batas pengujian ada di [docs/authentication.md](docs/authentication.md).
 
-Semua SQL database sampai Fase 4 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
+Semua SQL database sampai Fase 5 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
 
 ## Administrasi owner Fase 4
 
 Masuk melalui `/login`, buka `/account`, lalu **Buka pengelolaan usaha**. `/owner` mengelola toko, karyawan, ID login, PIN, penugasan dan pengaturan lewat API/database. Panduan lengkap serta batas verifikasi ada di [docs/owner-management.md](docs/owner-management.md).
 
 Untuk review tanpa cloud, gunakan preview PostgreSQL tes sementara: `RUN_ISOLATED_PREVIEW=true PREVIEW_OWNER_PASSWORD='password-khusus-tes-lokal' pnpm qa:owner`. Buka `http://127.0.0.1:3001/login`, ID `preview-owner`; data hilang ketika server dihentikan. Ini fixture QA, bukan fallback database aplikasi.
+
+## Jadwal Fase 5
+
+Owner: `/owner/schedules`; karyawan: `/my-schedule`. Template, draft/publish/cancel, lintas toko, shift malam dan audit sudah terhubung ke API. Panduan [docs/scheduling.md](docs/scheduling.md) memuat kontrak, cara review, hasil tes dan batas koneksi.
+
+Dalam preview `pnpm qa:owner`, buka `http://127.0.0.1:3002/owner-preview?view=schedules` untuk fixture owner atau `http://127.0.0.1:3002/owner-preview?view=mine` untuk jadwal karyawan. Database tetap sementara dan terisolasi.

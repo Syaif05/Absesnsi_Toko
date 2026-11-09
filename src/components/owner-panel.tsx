@@ -339,6 +339,7 @@ export function OwnerPanel({
             {label}
           </button>
         ))}
+        <Link href="/owner/schedules"><Icon name="calendar"/>Jadwal</Link>
       </nav>
       <main className="owner-content">
         <div className="page-heading">

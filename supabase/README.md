@@ -1,6 +1,6 @@
 # File SQL Supabase
 
-`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–4 untuk **database kosong**. Berisi schema privat attendance, 17 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
+`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–5 untuk **database kosong**. Berisi schema privat attendance, 17 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
 
 Pilih salah satu cara instalasi:
 
@@ -16,3 +16,7 @@ Storage/foto, policy akses foto, dan aturan workflow fase selanjutnya belum dibu
 ## Pengetatan akses cloud
 
 Migrasi `0004_supabase_security.sql` memindahkan btree_gist ke schema extensions dan mencabut execute publik fungsi event trigger rls_auto_enable jika fungsi bawaan itu tersedia. Tidak menambahkan policy publik untuk schema aplikasi. File gabungan telah diperbarui.
+
+## Jadwal Fase 5
+
+Migrasi 0005_flexible_schedules sudah diterapkan ke project absensi kita. Jurnal berisi 6 migrasi. File gabungan juga diperbarui, tetapi tetap hanya untuk database baru kosong; project existing menggunakan migrator incremental. Tidak ada seed jadwal/template di cloud.

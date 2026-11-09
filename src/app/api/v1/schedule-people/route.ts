@@ -1,0 +1,4 @@
+import { NextRequest } from 'next/server';
+import { handleSchedules } from '@/server/schedules/handler';
+export const runtime='nodejs';
+export const GET=(request:NextRequest)=>handleSchedules(request,'people');

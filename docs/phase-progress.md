@@ -87,3 +87,16 @@ Project `absensi kita` (ref `zeegtujueffpmrymnoxu`) terverifikasi ACTIVE_HEALTHY
 Migrasi tambahan `0004_supabase_security.sql` memindahkan btree_gist ke schema extensions dan mencabut izin Data API untuk fungsi event trigger bawaan rls_auto_enable. Advisor setelah perubahan tidak memiliki WARN/ERROR, hanya INFO RLS tanpa policy yang memang disengaja untuk schema privat/server-only.
 
 Runtime website belum terhubung: DATABASE_URL yang dimasukkan masih URL API HTTPS, bukan PostgreSQL URI. SUPABASE_URL dan UUID bisnis telah disiapkan di .env.local (diabaikan Git). Dibutuhkan URI dari Connect → Session pooler sebelum uji node-postgres/bootstrap owner. Belum ada akun owner yang bisa login; password bootstrap tidak dibuat otomatis. GitHub tidak disentuh.
+
+## Fase 5 — Shift dan jadwal fleksibel
+
+- [x] Template shift (buat/edit/nonaktif/aktif) dan editor tanggal/jam, termasuk 20.00–05.00.
+- [x] Kalender mingguan owner, filter toko/karyawan/status, pagination, penugasan lintas toko tanpa mengubah toko asal.
+- [x] Draft/publish/cancel dengan konfirmasi, version check, audit dan constraint anti-overlap PostgreSQL.
+- [x] Snapshot aturan/template/zona; konfirmasi perubahan setelah ada absensi, bukti asli dan histori tetap ada.
+- [x] Jadwal terbit karyawan sendiri dengan otorisasi server dan navigasi dari akun.
+- [x] Migrasi 0005, SQL gabungan, serta penerapan cloud ke absensi kita terverifikasi (6 jurnal migrasi, tanpa seed jadwal/template).
+- [x] 51 tes PostgreSQL/API/UI, lint/typecheck/build diperiksa pada checkpoint.
+- [x] Browser HP berhasil tambah draft, publish, reload, cancel dan edit template. Screenshot karyawan/owner/template lima viewport; editor tiga HP; tanpa overflow.
+
+Risiko/batas: native PostgreSQL concurrency multi-koneksi dan perangkat fisik belum diuji. Runtime lokal menuju direct hostname Supabase gagal DNS walaupun URI kini PostgreSQL dan project cocok; plugin dapat mengakses cloud. Owner operasional belum dibootstrap karena credential bootstrap kosong. Tidak ada push GitHub, data demo cloud, atau fitur Fase 6. Panduan dan file utama di `docs/scheduling.md`.

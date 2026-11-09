@@ -8,6 +8,9 @@ import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { AuthService } from "../src/server/auth/service";
 import { OwnerService } from "../src/server/owner/service";
+import { ScheduleService } from "../src/server/schedules/service";
+import { mondayOf } from "../src/lib/schedule-dates";
+import { temporaryPin } from "../src/server/auth/crypto";
 import type { AuthDatabase } from "../src/server/auth/types";
 if (
   process.env.NODE_ENV === "production" ||
@@ -52,9 +55,52 @@ await owner.createStore(token, {
   lat: -6.2,
   lng: 106.8,
 });
-await owner.createEmployee(token, {
+const previewEmployee = await owner.createEmployee(token, {
   fullName: "Karyawan Contoh (TES)",
   code: "TES-001",
+});
+const employeeFirst = await auth.login(
+  "employee",
+  "TES-001",
+  previewEmployee.temporaryPin,
+);
+const employeePin = temporaryPin();
+await auth.changePin(
+  employeeFirst.token,
+  previewEmployee.temporaryPin,
+  employeePin,
+);
+const employeeToken = (await auth.login("employee", "TES-001", employeePin))
+  .token;
+const schedules = new ScheduleService(auth);
+const storeChoices = (await owner.listStores(token)).items;
+const today = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Jakarta",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+const previewTemplate = await schedules.saveTemplate(token, {
+  name: "Malam (TES)",
+  startTime: "20:00",
+  endTime: "05:00",
+  crossesMidnight: true,
+  graceMinutes: 5,
+  isActive: true,
+});
+const previewNight = await schedules.create(token, {
+  employeeId: previewEmployee.employee.id,
+  storeId: storeChoices[1].id,
+  templateId: previewTemplate.id,
+  date: mondayOf(today),
+  startTime: "20:00",
+  endTime: "05:00",
+  crossesMidnight: true,
+});
+await schedules.decide(token, previewNight.id, {
+  status: "published",
+  version: 1,
+  confirmed: true,
 });
 const socket = new PGLiteSocketServer({
   db,
@@ -73,15 +119,23 @@ const gateway = createServer((request, response) => {
   }
   const query = new URL(request.url, "http://127.0.0.1:3002").searchParams;
   const tab = query.get("tab");
+  const view = query.get("view");
   response.writeHead(302, {
     "Cache-Control": "no-store",
     "Set-Cookie":
-      "princes-session=" + token + "; Path=/; HttpOnly; SameSite=Lax",
+      "princes-session=" +
+      (view === "mine" ? employeeToken : token) +
+      "; Path=/; HttpOnly; SameSite=Lax",
     Location:
-      "http://127.0.0.1:3001/owner?tab=" +
-      (["stores", "employees", "settings"].includes(tab ?? "")
-        ? tab
-        : "stores"),
+      "http://127.0.0.1:3001" +
+      (view === "schedules"
+        ? "/owner/schedules"
+        : view === "mine"
+          ? "/my-schedule"
+          : "/owner?tab=" +
+            (["stores", "employees", "settings"].includes(tab ?? "")
+              ? tab
+              : "stores")),
   });
   response.end();
 });

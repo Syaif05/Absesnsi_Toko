@@ -302,6 +302,18 @@ DO $$ DECLARE r text; BEGIN
  END IF;
 END $$;
 
+-- SOURCE: drizzle/0005_flexible_schedules.sql
+ALTER TABLE "attendance"."schedules" ADD COLUMN "version" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "attendance"."schedules" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "attendance"."shift_templates" ADD COLUMN "is_active" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "attendance"."shift_templates" ADD COLUMN "version" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "attendance"."shift_templates" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+CREATE INDEX schedule_store_start_idx ON attendance.schedules(store_id,starts_at);
+--> statement-breakpoint
+CREATE INDEX template_business_idx ON attendance.shift_templates(business_id);
+--> statement-breakpoint
+ALTER TABLE attendance.shift_templates ADD CONSTRAINT valid_template_times CHECK (start_local_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND end_local_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND ((crosses_midnight AND end_local_time<=start_local_time) OR (NOT crosses_midnight AND end_local_time>start_local_time)));
+
 CREATE SCHEMA IF NOT EXISTS drizzle;
 CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
@@ -309,4 +321,5 @@ INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('c4fbb01105a0f
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('da7df019bfc162d268a8eef65cf8480b462c4612c16fe7f6d526151411ced1a6',1794224091928);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('2edf7758c94f03a0b1970eb9e6393d714be6b54044f4dec512a17293e8c63e94',1794225072928);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('dfe99584630bb66351f727c8a5d0e46b0d1bc7dca3873234100397c9ee6f0411',1794227850191);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('d89c81281cde4d53adeb73327bc7ef1d232eb640928c79b818e199dcbe17248b',1794228837931);
 COMMIT;

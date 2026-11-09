@@ -49,6 +49,7 @@ export class AuthService {
   if(row.must_change_pin&&!allowTemporary)throw new AuthError('PIN_CHANGE_REQUIRED',403,'Ganti PIN sementara sebelum melanjutkan.');
   return {id:row.id,businessId:row.business_id,fullName:row.full_name,role:row.role,mustChangePin:!!row.must_change_pin};
  }
+ withIdentity<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){return this.db.transaction(async c=>work(c,await this.identity(c,token)))}
  withOwner<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
   return this.db.transaction(async c=>{const actor=await this.identity(c,token);requireOwner(actor);return work(c,actor)});
  }
