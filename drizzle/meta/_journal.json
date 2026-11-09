@@ -29,6 +29,13 @@
       "when": 1794225072928,
       "tag": "0003_owner_management",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794227850191,
+      "tag": "0004_supabase_security",
+      "breakpoints": true
     }
   ]
 }

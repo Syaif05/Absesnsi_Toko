@@ -79,3 +79,11 @@ Implementasi lokal selesai; Supabase cloud/GitHub tetap ditunda.
 Browser awal membuktikan login, tambah toko ketiga dengan reload, tambah karyawan dan ubah ID. Dialog native browser macet dan diganti dialog aplikasi; regresi konfirmasi diselesaikan dengan tes UI DOM yang memakai API/database asli. Snapshot final memakai sesi fixture tes. Pengujian interaktif penuh pada browser dengan dialog terbaru belum diulang; perangkat fisik dan Supabase cloud belum diuji. Detail bukti, sumber file dan prosedur preview ada di `docs/owner-management.md`.
 
 Perbaikan setup: CLI bootstrap/migrasi/seed dipindah ke .mts agar top-level await berjalan melalui tsx. Perintah pnpm tidak berubah. Tidak ada push GitHub atau mutasi Supabase. Fase 5 belum dimulai.
+
+## Integrasi Supabase — 9 November 2026
+
+Project `absensi kita` (ref `zeegtujueffpmrymnoxu`) terverifikasi ACTIVE_HEALTHY melalui plugin. Schema Fase 2–4 diterapkan pada database yang sebelumnya kosong; 17 tabel dengan RLS aktif, 5 entri jurnal Drizzle, satu bisnis Absensi Kita, tanpa employee/demo/PIN. Database diuji lewat SQL connector; akses schema untuk anon ditolak.
+
+Migrasi tambahan `0004_supabase_security.sql` memindahkan btree_gist ke schema extensions dan mencabut izin Data API untuk fungsi event trigger bawaan rls_auto_enable. Advisor setelah perubahan tidak memiliki WARN/ERROR, hanya INFO RLS tanpa policy yang memang disengaja untuk schema privat/server-only.
+
+Runtime website belum terhubung: DATABASE_URL yang dimasukkan masih URL API HTTPS, bukan PostgreSQL URI. SUPABASE_URL dan UUID bisnis telah disiapkan di .env.local (diabaikan Git). Dibutuhkan URI dari Connect → Session pooler sebelum uji node-postgres/bootstrap owner. Belum ada akun owner yang bisa login; password bootstrap tidak dibuat otomatis. GitHub tidak disentuh.

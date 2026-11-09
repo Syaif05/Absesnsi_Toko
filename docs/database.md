@@ -59,3 +59,9 @@ Event menyimpan employee UUID untuk idempotency dan store UUID untuk bukti lokas
 ## Perubahan Fase 4
 
 Migrasi `0003_owner_management.sql` menambah telepon opsional karyawan, jam operasional toko dan indeks assignment aktif. CRUD/audit/soft status/version settings dijalankan secara transaksional oleh `src/server/owner/service.ts`. Panduan owner, API dan pengujian tersedia di `docs/owner-management.md` dan `docs/api-contract.md`. Tidak ada seed/migrasi yang dijalankan pada cloud.
+
+## Instalasi cloud terverifikasi
+
+Pada 9 November 2026 schema dipasang pada project Supabase `absensi kita` (`zeegtujueffpmrymnoxu`) setelah konektor berhasil mengidentifikasinya dan memverifikasi database kosong. Migrasi 0004 memindahkan btree_gist dari public ke extensions serta membatasi izin execute fungsi event trigger bawaan. Verifikasi: 17 tabel dengan RLS, 5 migrasi Drizzle, tanpa employee/demo. Satu bisnis Absensi Kita disiapkan sebagai basis bootstrap owner.
+
+Koneksi plugin ke database sudah bekerja, tetapi DATABASE_URL lokal masih perlu diganti dengan PostgreSQL URI dari menu Connect, bukan Project API URL HTTPS. Uji koneksi runtime website/bootstrap tetap menunggu URI tersebut. Jangan menempel ulang file schema gabungan pada project ini; gunakan migrator untuk pembaruan selanjutnya.

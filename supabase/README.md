@@ -12,3 +12,7 @@ Untuk update database yang sudah memakai migrasi Fase 2, gunakan `pnpm db:migrat
 Sesudah instalasi, jalankan bootstrap owner melalui CLI aplikasi (lihat `docs/authentication.md`). SQL tidak boleh memuat password asli. Profil Owner Reza dibuat oleh bootstrap dengan credential dari environment server. Seed demo hanya boleh dijalankan pada database development khusus.
 
 Storage/foto, policy akses foto, dan aturan workflow fase selanjutnya belum dibuat. Database Supabase cloud dan GitHub tidak disentuh pada Fase 3–4, sesuai instruksi pemilik.
+
+## Pengetatan akses cloud
+
+Migrasi `0004_supabase_security.sql` memindahkan btree_gist ke schema extensions dan mencabut execute publik fungsi event trigger rls_auto_enable jika fungsi bawaan itu tersedia. Tidak menambahkan policy publik untuk schema aplikasi. File gabungan telah diperbarui.
