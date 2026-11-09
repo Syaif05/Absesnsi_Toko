@@ -47,3 +47,5 @@ Cara review: `pnpm dev`, buka localhost:3000, gunakan pemilih tampilan demo di a
 - [ ] Supabase cloud: pemilik memilih melewati pembuatan project. Tidak mengubah TimSAPA.
 
 UI tetap prototipe Fase 1. PGlite dipakai untuk tes, bukan mengganti database aplikasi. Akun owner yang bisa login/bootstrap belum dibuat karena termasuk Fase 3. Pengujian role Supabase, koneksi aplikasi cloud, dan concurrency multikoneksi belum dilakukan. Tidak ada migrasi destruktif atau kredensial yang ditambahkan ke Git.
+
+GitHub: origin disetel ke https://github.com/ownerreza/absensi_kita.git. Push ditolak HTTP 403 pada 9 November 2026. Git CLI dan konektor menggunakan Syaif05; metadata repository menyatakan `push=false`. Pemilik perlu memberikan akses Write atau masuk menggunakan akun dengan izin menulis sebelum push dapat diulang. Remote belum menerima source code.
