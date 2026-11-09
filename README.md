@@ -33,3 +33,7 @@ Vercel Hobby hanya untuk preview dan demo nonkomersial. Hosting operasional bisn
 Buka halaman utama lalu pilih **Tampilan owner**, **Tampilan karyawan**, atau **Login demo** pada bar atas. Pada HP, halaman administrasi tersedia melalui **Menu** di navigasi bawah. Form dan keputusan hanya mengubah sesi browser; refresh mengembalikan data contoh. Jangan masukkan PIN atau data karyawan nyata.
 
 Screenshot lima viewport untuk kedua peran tersedia di `docs/screenshots/`. Reference pemilik tersedia di `docs/reference/dashboard-reference.png`.
+
+## Database Fase 2
+
+Skema dan migrasi PostgreSQL sudah tersedia. Jalankan `pnpm test` untuk pengujian database terisolasi tanpa cloud. Petunjuk koneksi, migrasi, seed terkontrol dan ERD tersedia di [docs/database.md](docs/database.md). Supabase belum dibuat sesuai pilihan pemilik; UI masih menggunakan data prototipe Fase 1.
