@@ -16,3 +16,22 @@ Keputusan: pakai root `AbsenToko` yang sudah berisi PRD; Git lokal dipakai untuk
 Risiko: tanpa koneksi DB, acceptance Fase 0 belum lengkap. Karena gambar referensi belum ada, kemiripan visual tidak dapat dinilai. Fase 1 belum dimulai.
 
 Pekerjaan berikutnya pada Fase 0 jika prasyarat tersedia: tempatkan gambar di `docs/reference/dashboard-reference.png`, buat project Supabase development khusus Princes, isi `.env.local`, jalankan `pnpm db:check`, lalu review hasil. Lanjut Fase 1 hanya setelah instruksi pemilik.
+
+## Fase 1 — Design system & prototipe UI
+
+Status: prototipe tersedia untuk review. Pemilik menginstruksikan lanjut pada 9 November 2026 dan melampirkan referensi. Koneksi database dan GitHub tetap ditunda sesuai instruksi sebelumnya.
+
+- [x] Referensi gambar disimpan dan observasi visual diperbarui.
+- [x] Login demo; beranda, jadwal, riwayat/koreksi dan profil/PIN karyawan dalam simulasi browser.
+- [x] Dashboard owner, daftar absensi, persetujuan dengan konfirmasi, karyawan, toko, jadwal/template, pengaturan, laporan dan audit visual.
+- [x] Editor demo, nonaktif/aktif, ubah ID, konfirmasi reset PIN; kontrol tanpa tabel horizontal.
+- [x] Kondisi normal, loading, kosong, error dan denied bisa dipilih pada panel owner; pesan sukses demo.
+- [x] Screenshot karyawan dan owner pada 320/375/390/768/1440 tersimpan di `docs/screenshots/`. Lebar halaman sama dengan viewport pada sepuluh pemeriksaan.
+- [x] Browser mobile: tambah toko ketiga, edit ID, buka konfirmasi reset PIN, tampilkan error.
+- [x] Lint, typecheck dan build lulus.
+
+File utama: `src/components/attendance-demo.tsx`, `demo-data.ts`, `ui.tsx`, `src/app/page.tsx`, `globals.css`, gambar referensi dan screenshot, README serta catatan desain/progres.
+
+Batasan: semua data fiktif; form adalah simulasi, bukan validasi/penyimpanan bisnis. Kamera/GPS, autentikasi, PIN nyata, upload foto, audit permanen dan database belum aktif. Tanggal dan data grafik tetap untuk demo; tombol hari pada jadwal memberi pratinjau pilihan, belum memfilter kalender riil. Belum diuji pada perangkat fisik Android/iPhone, jaringan lemah, atau pembaca layar. Screenshot adalah pemeriksaan browser, bukan klaim pixel-perfect.
+
+Cara review: `pnpm dev`, buka localhost:3000, gunakan pemilih tampilan demo di atas dan Menu pada HP. Pada owner, buka Karyawan/Toko/Jadwal untuk mencoba editor; gunakan pemilih kondisi UI untuk loading/empty/error/denied. Refresh mereset perubahan. Fase berikutnya menunggu instruksi pemilik; tidak ada migrasi yang dijalankan.

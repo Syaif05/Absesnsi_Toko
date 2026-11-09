@@ -27,3 +27,9 @@ Gunakan project Supabase Free khusus Princes, bukan project produk lain. Salin c
 - [Checkpoint fase](docs/phase-progress.md)
 
 Vercel Hobby hanya untuk preview dan demo nonkomersial. Hosting operasional bisnis diputuskan sebelum go-live.
+
+## Review prototipe Fase 1
+
+Buka halaman utama lalu pilih **Tampilan owner**, **Tampilan karyawan**, atau **Login demo** pada bar atas. Pada HP, halaman administrasi tersedia melalui **Menu** di navigasi bawah. Form dan keputusan hanya mengubah sesi browser; refresh mengembalikan data contoh. Jangan masukkan PIN atau data karyawan nyata.
+
+Screenshot lima viewport untuk kedua peran tersedia di `docs/screenshots/`. Reference pemilik tersedia di `docs/reference/dashboard-reference.png`.
