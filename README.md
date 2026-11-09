@@ -37,3 +37,9 @@ Screenshot lima viewport untuk kedua peran tersedia di `docs/screenshots/`. Refe
 ## Database Fase 2
 
 Skema dan migrasi PostgreSQL sudah tersedia. Jalankan `pnpm test` untuk pengujian database terisolasi tanpa cloud. Petunjuk koneksi, migrasi, seed terkontrol dan ERD tersedia di [docs/database.md](docs/database.md). Supabase belum dibuat sesuai pilihan pemilik; UI masih menggunakan data prototipe Fase 1.
+
+## Autentikasi Fase 3 dan SQL Supabase
+
+Halaman akun tersedia di `/login` dan `/account`. Tanpa database yang dikonfigurasi, login menampilkan layanan belum tersedia. Petunjuk bootstrap owner, konfigurasi dan batas pengujian ada di [docs/authentication.md](docs/authentication.md).
+
+Semua SQL database sampai Fase 3 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.

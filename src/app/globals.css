@@ -5,3 +5,4 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 .state-select{width:auto}.select-label select{width:auto}
 input,textarea{font-size:16px}.demo-strip select{min-height:44px}.record-main strong,.activity-row strong{font-size:14px}.week-strip{margin-top:20px}
+.auth-page{min-height:100svh;display:grid;place-items:center;padding:28px 16px}.auth-page .login-card{width:100%;margin:0;box-sizing:border-box}.auth-error{padding:14px;background:#fff0f0;color:#a43c45;border-radius:10px;font-size:14px;line-height:1.6;margin-top:16px}.auth-notice{padding:16px;margin-top:20px;background:#edf7f2;color:#276c53;border-radius:10px;overflow-wrap:anywhere}.auth-notice p{color:inherit}.auth-notice a{text-decoration:underline}.logout-button{width:100%;margin-top:24px}button:disabled{cursor:wait;opacity:.6}

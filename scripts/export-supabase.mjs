@@ -1,0 +1,10 @@
+import { readdirSync,readFileSync,writeFileSync,mkdirSync } from 'node:fs';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
+mkdirSync('supabase/sql',{recursive:true});
+const files=readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort();
+const body=files.map(f=>'-- SOURCE: drizzle/'+f+'\n'+readFileSync('drizzle/'+f,'utf8')).join('\n');
+const ledger=readMigrationFiles({migrationsFolder:'./drizzle'}).map(m=>`INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('${m.hash}',${m.folderMillis});`).join('\n');
+writeFileSync('supabase/sql/001_schema_all.sql','-- GENERATED. Fresh database only. No demo data or credentials.\nBEGIN;\n'+body+`\nCREATE SCHEMA IF NOT EXISTS drizzle;
+CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
+`+ledger+'\nCOMMIT;\n');
+console.log('supabase/sql/001_schema_all.sql updated; includes Drizzle migration journal');

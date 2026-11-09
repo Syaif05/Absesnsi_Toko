@@ -1,0 +1,288 @@
+-- GENERATED. Fresh database only. No demo data or credentials.
+BEGIN;
+-- SOURCE: drizzle/0000_initial_attendance.sql
+CREATE SCHEMA "attendance";
+--> statement-breakpoint
+CREATE TABLE "attendance"."approval_requests" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"requester_id" uuid NOT NULL,
+	"type" text NOT NULL,
+	"target_type" text NOT NULL,
+	"target_id" uuid NOT NULL,
+	"reason" text NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"reviewer_id" uuid,
+	"decision_note" text,
+	"decided_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "valid_approval_status" CHECK ("attendance"."approval_requests"."status" in ('pending','approved','rejected')),
+	CONSTRAINT "valid_approval_decision" CHECK (("attendance"."approval_requests"."status"='pending' and "attendance"."approval_requests"."decided_at" is null and "attendance"."approval_requests"."reviewer_id" is null) or ("attendance"."approval_requests"."status"<>'pending' and "attendance"."approval_requests"."decided_at" is not null and "attendance"."approval_requests"."reviewer_id" is not null))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."employee_store_assignments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"store_id" uuid NOT NULL,
+	"starts_at" timestamp with time zone NOT NULL,
+	"ends_at" timestamp with time zone,
+	CONSTRAINT "valid_assignment_period" CHECK ("attendance"."employee_store_assignments"."ends_at" is null or "attendance"."employee_store_assignments"."ends_at">"attendance"."employee_store_assignments"."starts_at")
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."attendance_events" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"session_id" uuid NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"store_id" uuid NOT NULL,
+	"event_type" text NOT NULL,
+	"recorded_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"photo_path" text NOT NULL,
+	"lat" double precision,
+	"lng" double precision,
+	"accuracy_m" double precision,
+	"distance_m" double precision,
+	"location_status" text NOT NULL,
+	"review_status" text NOT NULL,
+	"reason" text,
+	"idempotency_key" uuid NOT NULL,
+	"rule_snapshot" jsonb NOT NULL,
+	CONSTRAINT "attendance_events_employee_id_idempotency_key_unique" UNIQUE("employee_id","idempotency_key"),
+	CONSTRAINT "attendance_events_session_id_event_type_unique" UNIQUE("session_id","event_type"),
+	CONSTRAINT "valid_event_type" CHECK ("attendance"."attendance_events"."event_type" in ('check_in','check_out')),
+	CONSTRAINT "valid_review_status" CHECK ("attendance"."attendance_events"."review_status" in ('not_required','pending','approved','rejected')),
+	CONSTRAINT "valid_gps" CHECK (("attendance"."attendance_events"."accuracy_m" is null or "attendance"."attendance_events"."accuracy_m">=0) and ("attendance"."attendance_events"."distance_m" is null or "attendance"."attendance_events"."distance_m">=0) and ("attendance"."attendance_events"."lat" is null or "attendance"."attendance_events"."lat" between -90 and 90) and ("attendance"."attendance_events"."lng" is null or "attendance"."attendance_events"."lng" between -180 and 180)),
+	CONSTRAINT "valid_location_status" CHECK ("attendance"."attendance_events"."location_status" in ('inside','outside','unavailable','inaccurate','denied'))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."attendance_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"schedule_id" uuid,
+	"status" text DEFAULT 'open' NOT NULL,
+	"check_in_at" timestamp with time zone,
+	"check_out_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "valid_session_status" CHECK ("attendance"."attendance_sessions"."status" in ('open','completed','needs_review','corrected')),
+	CONSTRAINT "valid_checkout" CHECK ("attendance"."attendance_sessions"."check_out_at" is null or ("attendance"."attendance_sessions"."check_in_at" is not null and "attendance"."attendance_sessions"."check_out_at">="attendance"."attendance_sessions"."check_in_at"))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."audit_logs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"actor_id" uuid,
+	"action" text NOT NULL,
+	"entity_type" text NOT NULL,
+	"entity_id" uuid,
+	"metadata_redacted" jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."auth_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"token_hash" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"revoked_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "auth_sessions_token_hash_unique" UNIQUE("token_hash")
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."businesses" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"logo_path" text,
+	"timezone" text DEFAULT 'Asia/Jakarta' NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"is_demo" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."attendance_corrections" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"approval_request_id" uuid NOT NULL,
+	"field" text NOT NULL,
+	"old_value" jsonb,
+	"requested_value" jsonb NOT NULL,
+	"applied_value" jsonb
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."employee_credentials" (
+	"employee_id" uuid PRIMARY KEY NOT NULL,
+	"pin_hash" text NOT NULL,
+	"must_change_pin" boolean DEFAULT true NOT NULL,
+	"failed_attempts" integer DEFAULT 0 NOT NULL,
+	"locked_until" timestamp with time zone,
+	"changed_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "nonnegative_attempts" CHECK ("attendance"."employee_credentials"."failed_attempts">=0)
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."employees" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"business_id" uuid NOT NULL,
+	"employee_code" text NOT NULL,
+	"full_name" text NOT NULL,
+	"primary_store_id" uuid,
+	"role" text DEFAULT 'employee' NOT NULL,
+	"status" text DEFAULT 'active' NOT NULL,
+	"joined_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "employees_business_id_employee_code_unique" UNIQUE("business_id","employee_code"),
+	CONSTRAINT "valid_employee_role" CHECK ("attendance"."employees"."role" in ('owner','manager','employee')),
+	CONSTRAINT "valid_employee_status" CHECK ("attendance"."employees"."status" in ('active','inactive'))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."schedules" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"store_id" uuid NOT NULL,
+	"template_id" uuid,
+	"starts_at" timestamp with time zone NOT NULL,
+	"ends_at" timestamp with time zone NOT NULL,
+	"status" text DEFAULT 'draft' NOT NULL,
+	"published_at" timestamp with time zone,
+	"created_by" uuid NOT NULL,
+	"rule_snapshot" jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "valid_schedule_period" CHECK ("attendance"."schedules"."ends_at">"attendance"."schedules"."starts_at"),
+	CONSTRAINT "valid_schedule_status" CHECK ("attendance"."schedules"."status" in ('draft','published','cancelled'))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."business_settings" (
+	"business_id" uuid NOT NULL,
+	"key" text NOT NULL,
+	"value_json" jsonb NOT NULL,
+	"updated_by" uuid,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "business_settings_business_id_key_unique" UNIQUE("business_id","key"),
+	CONSTRAINT "setting_key_whitelist" CHECK ("attendance"."business_settings"."key" in ('branding','attendance_rules','retention_policy'))
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."shift_templates" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"business_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"start_local_time" text NOT NULL,
+	"end_local_time" text NOT NULL,
+	"crosses_midnight" boolean DEFAULT false NOT NULL,
+	"grace_minutes" integer DEFAULT 5 NOT NULL,
+	CONSTRAINT "valid_grace" CHECK ("attendance"."shift_templates"."grace_minutes">=0)
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."stores" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"business_id" uuid NOT NULL,
+	"code" text NOT NULL,
+	"name" text NOT NULL,
+	"address" text NOT NULL,
+	"lat" double precision NOT NULL,
+	"lng" double precision NOT NULL,
+	"radius_m" integer DEFAULT 100 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "stores_business_id_code_unique" UNIQUE("business_id","code"),
+	CONSTRAINT "valid_store_location" CHECK ("attendance"."stores"."lat" between -90 and 90 and "attendance"."stores"."lng" between -180 and 180 and "attendance"."stores"."radius_m">0)
+);
+--> statement-breakpoint
+ALTER TABLE "attendance"."approval_requests" ADD CONSTRAINT "approval_requests_requester_id_employees_id_fk" FOREIGN KEY ("requester_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."approval_requests" ADD CONSTRAINT "approval_requests_reviewer_id_employees_id_fk" FOREIGN KEY ("reviewer_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."employee_store_assignments" ADD CONSTRAINT "employee_store_assignments_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."employee_store_assignments" ADD CONSTRAINT "employee_store_assignments_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "attendance"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_events" ADD CONSTRAINT "attendance_events_session_id_attendance_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "attendance"."attendance_sessions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_events" ADD CONSTRAINT "attendance_events_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_events" ADD CONSTRAINT "attendance_events_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "attendance"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_sessions" ADD CONSTRAINT "attendance_sessions_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_sessions" ADD CONSTRAINT "attendance_sessions_schedule_id_schedules_id_fk" FOREIGN KEY ("schedule_id") REFERENCES "attendance"."schedules"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."audit_logs" ADD CONSTRAINT "audit_logs_actor_id_employees_id_fk" FOREIGN KEY ("actor_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."auth_sessions" ADD CONSTRAINT "auth_sessions_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_corrections" ADD CONSTRAINT "attendance_corrections_approval_request_id_approval_requests_id_fk" FOREIGN KEY ("approval_request_id") REFERENCES "attendance"."approval_requests"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."employee_credentials" ADD CONSTRAINT "employee_credentials_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."employees" ADD CONSTRAINT "employees_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "attendance"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."employees" ADD CONSTRAINT "employees_primary_store_id_stores_id_fk" FOREIGN KEY ("primary_store_id") REFERENCES "attendance"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."schedules" ADD CONSTRAINT "schedules_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."schedules" ADD CONSTRAINT "schedules_store_id_stores_id_fk" FOREIGN KEY ("store_id") REFERENCES "attendance"."stores"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."schedules" ADD CONSTRAINT "schedules_template_id_shift_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "attendance"."shift_templates"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."schedules" ADD CONSTRAINT "schedules_created_by_employees_id_fk" FOREIGN KEY ("created_by") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."business_settings" ADD CONSTRAINT "business_settings_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "attendance"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."business_settings" ADD CONSTRAINT "business_settings_updated_by_employees_id_fk" FOREIGN KEY ("updated_by") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."shift_templates" ADD CONSTRAINT "shift_templates_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "attendance"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."stores" ADD CONSTRAINT "stores_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "attendance"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "approval_requests_status_created_at_index" ON "attendance"."approval_requests" USING btree ("status","created_at");--> statement-breakpoint
+CREATE INDEX "attendance_events_review_status_recorded_at_index" ON "attendance"."attendance_events" USING btree ("review_status","recorded_at");--> statement-breakpoint
+CREATE INDEX "attendance_sessions_employee_id_check_in_at_index" ON "attendance"."attendance_sessions" USING btree ("employee_id","check_in_at");--> statement-breakpoint
+CREATE INDEX "schedules_employee_id_starts_at_index" ON "attendance"."schedules" USING btree ("employee_id","starts_at");
+-- SOURCE: drizzle/0001_integrity_and_security.sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+--> statement-breakpoint
+ALTER TABLE attendance.schedules ADD CONSTRAINT no_published_overlap EXCLUDE USING gist (employee_id WITH =, tstzrange(starts_at,ends_at,'[)') WITH &&) WHERE (status='published');
+--> statement-breakpoint
+CREATE UNIQUE INDEX one_open_session ON attendance.attendance_sessions(employee_id) WHERE check_out_at IS NULL;
+--> statement-breakpoint
+CREATE FUNCTION attendance.protect_audit() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$ BEGIN RAISE EXCEPTION 'Audit logs are append-only'; END $$;
+--> statement-breakpoint
+CREATE TRIGGER audit_append_only BEFORE UPDATE OR DELETE ON attendance.audit_logs FOR EACH ROW EXECUTE FUNCTION attendance.protect_audit();
+--> statement-breakpoint
+CREATE FUNCTION attendance.guard_approval() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$ BEGIN IF OLD.status <> 'pending' THEN RAISE EXCEPTION 'Approval already decided'; END IF; RETURN NEW; END $$;
+--> statement-breakpoint
+CREATE TRIGGER approval_final BEFORE UPDATE ON attendance.approval_requests FOR EACH ROW EXECUTE FUNCTION attendance.guard_approval();
+--> statement-breakpoint
+CREATE FUNCTION attendance.guard_event_owner() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM attendance.attendance_sessions s WHERE s.id=NEW.session_id AND s.employee_id=NEW.employee_id) THEN RAISE EXCEPTION 'Event employee must own session'; END IF;
+ RETURN NEW; END $$;
+--> statement-breakpoint
+CREATE TRIGGER event_owner BEFORE INSERT OR UPDATE ON attendance.attendance_events FOR EACH ROW EXECUTE FUNCTION attendance.guard_event_owner();
+--> statement-breakpoint
+DO $$ DECLARE t text; r text; BEGIN
+ FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='attendance' LOOP
+ EXECUTE format('ALTER TABLE attendance.%I ENABLE ROW LEVEL SECURITY',t);
+ END LOOP;
+ FOR r IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated') LOOP
+ EXECUTE format('REVOKE ALL ON SCHEMA attendance FROM %I',r);
+ EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA attendance FROM %I',r);
+ EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA attendance FROM %I',r);
+ END LOOP;
+END $$;
+--> statement-breakpoint
+REVOKE ALL ON SCHEMA attendance FROM PUBLIC;
+--> statement-breakpoint
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA attendance FROM PUBLIC;
+
+-- SOURCE: drizzle/0002_auth_foundation.sql
+CREATE TABLE "attendance"."auth_rate_limits" (
+	"key" text PRIMARY KEY NOT NULL,
+	"attempts" integer NOT NULL,
+	"resets_at" timestamp with time zone NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."bootstrap_state" (
+	"business_id" uuid PRIMARY KEY NOT NULL,
+	"completed_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "attendance"."owner_credentials" (
+	"employee_id" uuid PRIMARY KEY NOT NULL,
+	"password_hash" text NOT NULL,
+	"changed_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "attendance"."bootstrap_state" ADD CONSTRAINT "bootstrap_state_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "attendance"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attendance"."owner_credentials" ADD CONSTRAINT "owner_credentials_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE attendance.owner_credentials ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE attendance.bootstrap_state ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE attendance.auth_rate_limits ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE INDEX session_employee_idx ON attendance.auth_sessions(employee_id);
+--> statement-breakpoint
+CREATE INDEX rate_limit_expiry_idx ON attendance.auth_rate_limits(resets_at);
+--> statement-breakpoint
+DO $$ DECLARE r text; BEGIN
+ FOR r IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated') LOOP
+ EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA attendance FROM %I',r);
+ END LOOP;
+END $$;
+
+CREATE SCHEMA IF NOT EXISTS drizzle;
+CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('c4fbb01105a0f7a96f72e3efa2e4aa0e6686b1285d8549468a469787784f0ed1',1794222852856);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('da7df019bfc162d268a8eef65cf8480b462c4612c16fe7f6d526151411ced1a6',1794224091928);
+COMMIT;

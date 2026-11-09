@@ -1,0 +1,10 @@
+import { createHash,createHmac,randomBytes,randomInt } from 'node:crypto';
+import { hash,verify } from '@node-rs/argon2';
+export const hashCredential=(value:string)=>hash(value,{algorithm:2,memoryCost:19456,timeCost:2,parallelism:1,outputLen:32});
+export const verifyCredential=(encoded:string,value:string)=>verify(encoded,value);
+export const newToken=()=>randomBytes(32).toString('base64url');
+export const tokenHash=(token:string)=>createHash('sha256').update(token).digest('hex');
+export const throttleKey=(secret:string,value:string)=>createHmac('sha256',secret).update(value).digest('hex');
+export const temporaryPin=()=>randomInt(0,1000000).toString().padStart(6,'0');
+let dummy:Promise<string>|undefined;
+export const dummyHash=()=>dummy??=hashCredential('invalid-credential-placeholder');

@@ -47,3 +47,14 @@ export const settings = app.table('business_settings', {
 export const auditLogs = app.table('audit_logs', {
  id:id(), actorId:uuid('actor_id').references(()=>employees.id), action:text('action').notNull(), entityType:text('entity_type').notNull(), entityId:uuid('entity_id'), metadataRedacted:jsonb('metadata_redacted').notNull(), createdAt:created(),
 });
+
+// Owner uses a password independently of employee PIN credentials.
+export const ownerCredentials = app.table('owner_credentials', {
+ employeeId:uuid('employee_id').primaryKey().references(()=>employees.id), passwordHash:text('password_hash').notNull(), changedAt:at('changed_at').defaultNow().notNull(),
+});
+export const bootstrapState = app.table('bootstrap_state', {
+ businessId:uuid('business_id').primaryKey().references(()=>businesses.id), completedAt:at('completed_at').defaultNow().notNull(),
+});
+export const authRateLimits = app.table('auth_rate_limits', {
+ key:text('key').primaryKey(), attempts:integer('attempts').notNull(), resetsAt:at('resets_at').notNull(),
+});

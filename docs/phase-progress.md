@@ -49,3 +49,17 @@ Cara review: `pnpm dev`, buka localhost:3000, gunakan pemilih tampilan demo di a
 UI tetap prototipe Fase 1. PGlite dipakai untuk tes, bukan mengganti database aplikasi. Akun owner yang bisa login/bootstrap belum dibuat karena termasuk Fase 3. Pengujian role Supabase, koneksi aplikasi cloud, dan concurrency multikoneksi belum dilakukan. Tidak ada migrasi destruktif atau kredensial yang ditambahkan ke Git.
 
 GitHub: origin disetel ke https://github.com/ownerreza/absensi_kita.git. Push ditolak HTTP 403 pada 9 November 2026. Git CLI dan konektor menggunakan Syaif05; metadata repository menyatakan `push=false`. Pemilik perlu memberikan akses Write atau masuk menggunakan akun dengan izin menulis sebelum push dapat diulang. Remote belum menerima source code.
+
+## Fase 3 — Auth, bootstrap dan RBAC
+
+Implementasi lokal selesai; integrasi database cloud ditunda sesuai instruksi pemilik.
+
+- [x] Owner bootstrap CLI sekali per bisnis; Owner Reza default, password kuat dengan Argon2id.
+- [x] Login employee ID+PIN, wajib ganti PIN sementara, change/reset PIN, logout/revoke, guard owner dan ownership/business.
+- [x] Cookie HttpOnly/SameSite, Secure saat production, hash token di server, validasi akun aktif pada setiap akses, CSRF Origin dan validasi Zod.
+- [x] Rate limit persisten, pembatasan PIN reset/change, audit tanpa credential.
+- [x] Migrasi 0002 dan file SQL gabungan `supabase/sql/001_schema_all.sql` untuk database kosong; seluruh source migrasi di `drizzle/`.
+- [x] Halaman login dan akun; kondisi tanpa database menampilkan 503, bukan sukses demo.
+- [x] 20 tes integrasi/unit HTTP lulus; lint, typecheck dan build diperiksa. Screenshot login karyawan/owner lima viewport tanpa overflow di `docs/screenshots/auth-*`.
+
+Batasan: login cloud dan browser sampai akun aktif belum diuji karena database ditunda. MFA belum tersedia. UI utama `/` tetap prototipe; CRUD terhubung dilakukan Fase 4. Tidak ada push GitHub atau perubahan Supabase. Detail operasi dan risiko di `docs/authentication.md`. Fase berikutnya menunggu instruksi pengguna.

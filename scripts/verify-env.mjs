@@ -41,5 +41,5 @@ if (errors.length) {
 } else {
   console.log("ENV nonsecret valid.");
   console.log(`Database: ${databaseUrl ? "URL terisi; jalankan db:check" : "belum dikonfigurasi"}.`);
-  console.log("Secret, storage, dan bootstrap belum diuji pada Fase 0.");
+  console.log("Storage dan bootstrap hanya diverifikasi saat konfigurasi tersedia; lihat docs/authentication.md.");
 }

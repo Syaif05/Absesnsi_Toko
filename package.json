@@ -13,15 +13,19 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed:dev": "tsx scripts/seed-dev.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "owner:bootstrap": "tsx scripts/bootstrap-owner.ts",
+    "db:export:supabase": "node scripts/export-supabase.mjs"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.5",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",
