@@ -55,3 +55,7 @@ Event menyimpan employee UUID untuk idempotency dan store UUID untuk bukti lokas
 ## Bukti tes
 
 `pnpm test`: database baru in-memory; kedua migrasi SQL dijalankan tanpa modifikasi. Delapan tes menguji tabel/RLS, seed dua kali, larangan seed production, repository dan referensi UUID, duplikasi ID, radius, overlap published, shift lintas malam, event duplikat/GPS, audit append-only, dan finalitas approval. Tes ini belum menguji concurrency multi-koneksi PostgreSQL cloud maupun authorization endpoint yang belum dibuat.
+
+## Perubahan Fase 4
+
+Migrasi `0003_owner_management.sql` menambah telepon opsional karyawan, jam operasional toko dan indeks assignment aktif. CRUD/audit/soft status/version settings dijalankan secara transaksional oleh `src/server/owner/service.ts`. Panduan owner, API dan pengujian tersedia di `docs/owner-management.md` dan `docs/api-contract.md`. Tidak ada seed/migrasi yang dijalankan pada cloud.

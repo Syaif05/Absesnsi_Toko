@@ -9,3 +9,5 @@ build/
 *.log
 *.sql.gz
 .DS_Store
+
+.next-owner-preview/

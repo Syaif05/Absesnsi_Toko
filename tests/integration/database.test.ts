@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync,readdirSync } from 'node:fs';
 import { afterAll,beforeAll,expect,it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
@@ -10,13 +10,13 @@ const pg=new PGlite({extensions:{btree_gist}});
 const db=drizzle(pg,{schema});
 const repo=workforceRepository(db);
 beforeAll(async()=>{
- for(const f of ['0000_initial_attendance.sql','0001_integrity_and_security.sql'])await pg.exec(readFileSync('drizzle/'+f,'utf8'));
+ for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())await pg.exec(readFileSync('drizzle/'+f,'utf8'));
  await pg.exec(seedSql);
 },30000);
 afterAll(()=>pg.close());
-it('migrates empty PostgreSQL and creates all 14 protected tables',async()=>{
+it('migrates empty PostgreSQL and creates all 17 protected tables',async()=>{
  const result=await pg.query<{count:number}>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='attendance' and c.relkind='r' and c.relrowsecurity");
- expect(result.rows[0].count).toBe(14);
+ expect(result.rows[0].count).toBe(17);
 });
 it('seed is idempotent and creates no credentials',async()=>{
  await pg.exec(seedSql);expect(await repo.listEmployees(demoBusinessId)).toHaveLength(9);expect(await repo.listStores(demoBusinessId)).toHaveLength(2);

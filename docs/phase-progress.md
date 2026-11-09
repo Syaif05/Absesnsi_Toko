@@ -63,3 +63,19 @@ Implementasi lokal selesai; integrasi database cloud ditunda sesuai instruksi pe
 - [x] 20 tes integrasi/unit HTTP lulus; lint, typecheck dan build diperiksa. Screenshot login karyawan/owner lima viewport tanpa overflow di `docs/screenshots/auth-*`.
 
 Batasan: login cloud dan browser sampai akun aktif belum diuji karena database ditunda. MFA belum tersedia. UI utama `/` tetap prototipe; CRUD terhubung dilakukan Fase 4. Tidak ada push GitHub atau perubahan Supabase. Detail operasi dan risiko di `docs/authentication.md`. Fase berikutnya menunggu instruksi pengguna.
+
+## Fase 4 — CRUD toko, karyawan dan pengaturan owner
+
+Implementasi lokal selesai; Supabase cloud/GitHub tetap ditunda.
+
+- [x] API dan UI owner untuk tambah/edit/nonaktif/aktif toko dan karyawan; filter dan pagination.
+- [x] ID login unik, UUID/histori tetap, PIN awal sekali tampil, reset PIN memakai service Fase 3.
+- [x] Perubahan ID/status mencabut sesi; employee dan resource lintas bisnis ditolak server.
+- [x] Assignment toko bersejarah; pengaturan bisnis whitelist, versi dan audit sebelum/sesudah atomik.
+- [x] Migrasi 0003 dan file SQL gabungan Supabase diperbarui; data historis tidak dihapus.
+- [x] 36 tes PostgreSQL/API/UI DOM lulus; lint/typecheck/build dijalankan pada checkpoint.
+- [x] Screenshot tiga halaman owner pada 320/375/390/768/1440, seluruhnya tanpa overflow. Form daftar/aksi tidak memerlukan tabel horizontal.
+
+Browser awal membuktikan login, tambah toko ketiga dengan reload, tambah karyawan dan ubah ID. Dialog native browser macet dan diganti dialog aplikasi; regresi konfirmasi diselesaikan dengan tes UI DOM yang memakai API/database asli. Snapshot final memakai sesi fixture tes. Pengujian interaktif penuh pada browser dengan dialog terbaru belum diulang; perangkat fisik dan Supabase cloud belum diuji. Detail bukti, sumber file dan prosedur preview ada di `docs/owner-management.md`.
+
+Perbaikan setup: CLI bootstrap/migrasi/seed dipindah ke .mts agar top-level await berjalan melalui tsx. Perintah pnpm tidak berubah. Tidak ada push GitHub atau mutasi Supabase. Fase 5 belum dimulai.

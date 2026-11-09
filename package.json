@@ -11,11 +11,12 @@
     "env:check": "node scripts/verify-env.mjs",
     "db:check": "node scripts/check-db.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/db-migrate.ts",
-    "db:seed:dev": "tsx scripts/seed-dev.ts",
+    "db:migrate": "tsx scripts/db-migrate.mts",
+    "db:seed:dev": "tsx scripts/seed-dev.mts",
     "test": "vitest run",
-    "owner:bootstrap": "tsx scripts/bootstrap-owner.ts",
-    "db:export:supabase": "node scripts/export-supabase.mjs"
+    "owner:bootstrap": "tsx scripts/bootstrap-owner.mts",
+    "db:export:supabase": "node scripts/export-supabase.mjs",
+    "qa:owner": "tsx scripts/preview-owner.mts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -29,6 +30,9 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",
+    "@electric-sql/pglite-socket": "^0.2.18",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
@@ -36,6 +40,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "jsdom": "^31.0.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

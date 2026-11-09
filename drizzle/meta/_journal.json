@@ -22,6 +22,13 @@
       "when": 1794224091928,
       "tag": "0002_auth_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794225072928,
+      "tag": "0003_owner_management",
+      "breakpoints": true
     }
   ]
 }

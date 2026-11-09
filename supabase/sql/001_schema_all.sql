@@ -280,9 +280,15 @@ DO $$ DECLARE r text; BEGIN
  END LOOP;
 END $$;
 
+-- SOURCE: drizzle/0003_owner_management.sql
+ALTER TABLE "attendance"."employees" ADD COLUMN "phone" text;--> statement-breakpoint
+ALTER TABLE "attendance"."stores" ADD COLUMN "operating_hours" text DEFAULT '' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX one_current_store_assignment ON attendance.employee_store_assignments(employee_id) WHERE ends_at IS NULL;
+
 CREATE SCHEMA IF NOT EXISTS drizzle;
 CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('c4fbb01105a0f7a96f72e3efa2e4aa0e6686b1285d8549468a469787784f0ed1',1794222852856);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('da7df019bfc162d268a8eef65cf8480b462c4612c16fe7f6d526151411ced1a6',1794224091928);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('2edf7758c94f03a0b1970eb9e6393d714be6b54044f4dec512a17293e8c63e94',1794225072928);
 COMMIT;

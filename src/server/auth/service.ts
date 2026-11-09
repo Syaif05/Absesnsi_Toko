@@ -49,6 +49,9 @@ export class AuthService {
   if(row.must_change_pin&&!allowTemporary)throw new AuthError('PIN_CHANGE_REQUIRED',403,'Ganti PIN sementara sebelum melanjutkan.');
   return {id:row.id,businessId:row.business_id,fullName:row.full_name,role:row.role,mustChangePin:!!row.must_change_pin};
  }
+ withOwner<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
+  return this.db.transaction(async c=>{const actor=await this.identity(c,token);requireOwner(actor);return work(c,actor)});
+ }
  me(token:string,allowTemporary=false){return this.db.transaction(c=>this.identity(c,token,allowTemporary))}
  async logout(token:string){await this.db.transaction(async c=>{await c.query('update attendance.auth_sessions set revoked_at=now() where token_hash=$1 and revoked_at is null',[tokenHash(token)])})}
  async changePin(token:string,currentValue:unknown,nextValue:unknown){
