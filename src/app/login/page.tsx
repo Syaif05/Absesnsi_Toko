@@ -1,2 +1,4 @@
 import { LoginPanel } from '@/components/auth-panel';
-export default function LoginPage(){return <main className="auth-page"><LoginPanel/></main>}
+import { demoEnabled } from '@/server/release/demo';
+export const dynamic='force-dynamic';
+export default function LoginPage(){return <main className="auth-page"><LoginPanel showDemo={demoEnabled(process.env)}/></main>}

@@ -1,0 +1,59 @@
+services:
+  web:
+    build:
+      context: ..
+      target: web
+    env_file: ../.env.production.local
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      ALLOW_DEMO_SEED: "false"
+    expose:
+      - "3000"
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN to the approved production hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  ops:
+    profiles:
+      - admin
+    user: "${OPS_UID:-1000}:${OPS_GID:-1000}"
+    build:
+      context: ..
+      target: ops
+    env_file: ../.env.production.local
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      ALLOW_DEMO_SEED: "false"
+    volumes:
+      - ../.local/backups:/backups
+    restart: "no"
+volumes:
+  caddy_data:
+  caddy_config:

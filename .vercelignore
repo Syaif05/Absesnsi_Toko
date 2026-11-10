@@ -1,0 +1,7 @@
+.env*
+.local/
+*.dump
+*.enc
+*.sql.gz
+*.incomplete*/
+docs/

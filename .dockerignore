@@ -1,0 +1,17 @@
+.git
+.vercel
+.env*
+.local
+node_modules
+.next*
+out
+build
+docs
+tests
+*.log
+*.dump
+*.enc
+*.sql.gz
+*.incomplete*
+.DS_Store
+.npmrc

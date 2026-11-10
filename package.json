@@ -24,7 +24,11 @@
     "backup:create": "node --import tsx scripts/backup.mts create",
     "backup:verify": "node --import tsx scripts/backup.mts verify",
     "backup:extract": "node --import tsx scripts/backup.mts extract",
-    "security:client": "node --import tsx scripts/check-client-secrets.mts"
+    "security:client": "node --import tsx scripts/check-client-secrets.mts",
+    "release:build": "node scripts/build-standalone.mjs",
+    "release:check": "node --import tsx scripts/release-check.mts",
+    "release:smoke": "node scripts/release-smoke.mjs",
+    "start:standalone": "node .next/standalone/server.js"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

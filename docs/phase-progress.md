@@ -180,3 +180,27 @@ Implementasi backend/hardening selesai untuk checkpoint, **bukan persetujuan go-
 File utama: src/server/security (config/pool/body/headers/observability), auth/database/service/http/runtime, logging pada HTTP handlers, src/server/ops encryption/archive, scripts backup/check/env/database, migration 0009 + SQL gabungan, account password form/error/404/CSS, tests hardening/backup/api-journey/auth. Panduan docs/hardening.md, docs/backup-restore.md dan docs/privacy-draft.md memisahkan bukti uji dari bagian yang tertunda. CLI administratif memakai node --import tsx untuk menghindari kebutuhan IPC CLI di sandbox; nama perintah pnpm tetap.
 
 Menjalankan: isi .env.local privat, `pnpm env:check`, `pnpm dev`; password owner melalui `/account`. Setelah PostgreSQL pulih, `pnpm db:migrate` incremental hingga 0009 dan verifikasi advisor/acceptance yang tertunda. Build lalu typecheck berurutan; `pnpm security:client` setelah build. Tidak membuat data karyawan/foto cloud, tidak restore ke produksi, tidak deploy/push GitHub.
+
+
+## Fase 10 — Paket deployment, handover dan persiapan pilot (10 November 2026)
+
+Status: **persiapan kode/dokumentasi selesai untuk checkpoint lokal; deployment dan acceptance pilot belum selesai**. Pemilik meminta lanjut Fase 10; penundaan UI/UX tetap berlaku. Tidak memulai Fase 11.
+
+- [x] Root menuju login; prototipe dipisah ke `/demo` khusus development dan tidak dapat dirender pada NODE_ENV production. Login hanya menampilkan tautan demo bila server mengizinkan.
+- [x] Build standalone portable dengan static/public, pembuangan salinan ENV turunan dan pemindaian nilai secret aktif; 2.243 entri artefak diperiksa tanpa `.env*`. Import sharp/Argon2 pada artefak macOS lulus, bukan bukti binary Linux.
+- [x] Docker multi-stage Node 24/web non-root dan ops PostgreSQL client 17; Compose dengan web internal, Caddy HTTPS, volume sertifikat/backup dan log terbatas; ENV produksi template kosong, dockerignore/vercelignore secrets/backup.
+- [x] Preflight readonly: konfigurasi HTTPS/production, demo seed mati, bootstrap secret dibuang; 18 tabel RLS, jurnal hash/urutan migrasi, trigger/index, schema privat, fungsi, business/owner dan scope sesi/foto; metadata bucket privat/JPEG/512 KiB. technicalReady dibedakan dari operationalAcceptance NOT_VERIFIED.
+- [x] Liveness JSON publik tanpa credential/infrastruktur; smoke CLI HTTPS hanya endpoint JSON anonim dan header keamanan. Liveness tidak menjadi jaminan DB/Storage siap.
+- [x] Runbook instalasi kosong/bootstrap/secret/HTTPS/backup/monitoring/rollback/handover, panduan owner/employee dan checklist pilot satu toko lalu toko kedua. Tidak mengisi data nyata lewat SQL/seed.
+- [x] `pnpm test:server`: **136 tes backend, 11 file lulus** (131 sebelumnya + 5 release). Preflight diuji pada SQL bundle kosong, bootstrap owner fiktif, transaksi readonly; exposure PUBLIC/RLS nonaktif/data demo/hash migrasi salah ditolak. Bucket unsafe dan policy demo production ditolak.
+- [x] `pnpm release:build`, `pnpm typecheck`, `pnpm lint`, `pnpm security:client`, `git diff --check` lulus. Review kode TSX mengikuti React Best Practices; tidak menjalankan tes UI.
+- [x] Smoke standalone lokal hanya GET JSON: liveness 200/no-store/header sah, endpoint terlindungi 503 dengan DB fixture tidak tersedia (fail-safe, bukan kelulusan smoke produksi). Server dihentikan; tidak ada browser/perangkat/halaman UI dibuka.
+- [x] Preflight terhadap ENV development secara sengaja gagal production_config/production_mode; metadata bucket existing tetap privat, limit 512 KiB/JPEG lulus. Tidak mengubah cloud. `pnpm db:check` tetap ENOTFOUND.
+- [ ] Hosting/domain produksi dan project baru milik penerima belum terkonfirmasi; klarifikasi target sudah diminta. Tidak membeli resource, memilih plan berbayar, deploy publik atau push GitHub.
+- [ ] Supabase get_project dan Vercel list_teams gagal transport; pemilik akun/plan/target belum dapat diverifikasi. Cloud terakhir sampai 0005, migrasi 0006–0009 belum diterapkan; bootstrap owner operasional belum dibuat.
+- [ ] Docker, pg_dump, pg_restore dan vercel CLI tidak tersedia lokal. Dockerfile/Compose belum dieksekusi; native restore, scheduler backup/salinan kedua dan monitoring/alarm belum dipasang/diverifikasi.
+- [ ] Data nyata owner, domain/HTTPS nyata, kamera/GPS perangkat, UI/UX, native concurrency, kapasitas, kebijakan privasi/retensi/RPO/RTO dan pilot kedua toko belum diterima. Checklist pilot seluruhnya terbuka; build/test backend bukan persetujuan operasional.
+
+File berubah: next.config.ts/package.json; root/login/auth-panel dan route demo; API health; src/server/release; scripts build-standalone/release-check/release-smoke; Dockerfile/.dockerignore/.vercelignore/deploy; tests/integration/release.test.ts; README dan docs deployment-handover/user-guide/pilot-checklist/phase-progress. Tidak ada migrasi baru atau perubahan `.env.local`.
+
+Cara menjalankan lokal: `pnpm dev` untuk pengembangan; `pnpm release:build` untuk paket, suntikkan ENV runtime lalu `pnpm start:standalone` di belakang HTTPS reverse proxy. Ikuti docs/deployment-handover.md setelah target diverifikasi. Tag kandidat `v0.1.0-rc.1` menandai paket lokal, bukan final release/go-live. Menutup Fase 10 memerlukan deployment aktual, native restore dan pilot/perangkat ketika penundaan UI dicabut.

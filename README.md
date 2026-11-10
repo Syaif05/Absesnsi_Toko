@@ -31,7 +31,7 @@ Vercel Hobby hanya untuk preview dan demo nonkomersial. Hosting operasional bisn
 
 ## Review prototipe Fase 1
 
-Buka halaman utama lalu pilih **Tampilan owner**, **Tampilan karyawan**, atau **Login demo** pada bar atas. Pada HP, halaman administrasi tersedia melalui **Menu** di navigasi bawah. Form dan keputusan hanya mengubah sesi browser; refresh mengembalikan data contoh. Jangan masukkan PIN atau data karyawan nyata.
+Dalam development (`pnpm dev`, `APP_ENV=development`), buka `/demo` lalu pilih **Tampilan owner**, **Tampilan karyawan**, atau **Login demo** pada bar atas. Pada HP, halaman administrasi tersedia melalui **Menu** di navigasi bawah. Form dan keputusan hanya mengubah sesi browser; refresh mengembalikan data contoh. Jangan masukkan PIN atau data karyawan nyata.
 
 Screenshot lima viewport untuk kedua peran tersedia di `docs/screenshots/`. Reference pemilik tersedia di `docs/reference/dashboard-reference.png`.
 
@@ -80,3 +80,17 @@ Owner membuka `/owner/dashboard` dari akun; laporan di `/owner/reports`. KPI sah
 Validasi ENV/TLS, timeout dan retry transaksi terbatas, scope DB, header keamanan, error/log tanpa credential, password owner + revoke sesi, scanner secret browser, serta backup terenkripsi ditambahkan. [Checkpoint hardening](docs/hardening.md) membedakan hasil tes dari blocker penerimaan.
 
 `pnpm test:server`: 131 tes backend. Pengujian UI/UX/browser/perangkat tetap ditunda; kelulusan build bukan kesiapan go-live. Native backup/restore dan migrasi cloud 0006–0009 belum dapat diuji karena client PostgreSQL belum tersedia dan koneksi masih gagal DNS. [Runbook backup/restore](docs/backup-restore.md) dan [draf privasi](docs/privacy-draft.md) perlu ditinjau pemilik sebelum pilot. Tidak deploy atau push GitHub.
+
+
+## Deployment dan handover Fase 10
+
+Paket standalone, Docker multi-stage (web non-root + ops PostgreSQL 17), Compose/Caddy HTTPS, ENV produksi kosong, preflight readonly dan smoke API tersedia. `/` kini menuju login; prototipe `/demo` dinonaktifkan pada production. Tidak ada seed produksi.
+
+- [Runbook deployment dan serah terima](docs/deployment-handover.md)
+- [Panduan owner dan karyawan](docs/user-guide.md)
+- [Checklist pilot yang belum dijalankan](docs/pilot-checklist.md)
+- [Template ENV produksi tanpa secret](deploy/production.env.example)
+
+`pnpm release:build` membuat `.next/standalone` beserta static/public dan memeriksa secret. Setelah ENV produksi disiapkan, `pnpm release:check` memeriksa kesiapan teknis; `pnpm release:smoke https://DOMAIN` hanya GET JSON tanpa UI. Semua langkah instalasi, bootstrap satu kali, HTTPS, backup dan rollback ada dalam runbook.
+
+Checkpoint lokal: **136 tes backend lulus**, typecheck/lint/build standalone dan scanner browser lulus. Docker/image Linux belum dibangun karena Docker tidak tersedia; native backup/restore, deployment publik dan pilot toko belum dilakukan. Koneksi PostgreSQL masih ENOTFOUND; metadata bucket privat/JPEG/512 KiB terverifikasi melalui REST. Konfigurasi development ditolak preflight produksi sebagaimana seharusnya. Target hosting/domain dan project milik penerima belum dikonfirmasi, konektor cloud gagal transport. UI/UX tetap tidak diuji sesuai permintaan pengguna. Fase 10 belum memenuhi acceptance pilot/go-live; GitHub tidak dipush.
