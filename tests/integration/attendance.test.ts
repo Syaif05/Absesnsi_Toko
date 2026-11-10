@@ -215,3 +215,17 @@ it('storage adapter refuses public buckets and uses private upload/sign/delete e
  await provider.delete(path);expect(calls.at(-1)?.init?.method).toBe('DELETE');
  await expect(provider.uploadPrivate('../private.jpg',jpeg)).rejects.toThrow('Invalid photo path');
 });
+
+it('shows the next published shift separately from shifts that can check in',async()=>{
+ const f=await fixture();
+ await pg.query("UPDATE attendance.schedules SET starts_at=now()+interval '30 minutes' WHERE id=$1",[f.scheduleId]);
+ const upcoming=await service.context(f.token);
+ expect(upcoming.shifts).toHaveLength(0);
+ expect(upcoming.upcoming?.storeName).toBe('Toko penugasan');
+ expect(Date.parse(upcoming.upcoming!.startsAt)).toBeGreaterThan(Date.parse(upcoming.serverTime));
+ await expect(submit(f)).rejects.toMatchObject({code:'ATTENDANCE_OUTSIDE_SCHEDULE'});
+ await pg.query("UPDATE attendance.schedules SET starts_at=now()-interval '1 minute' WHERE id=$1",[f.scheduleId]);
+ const active=await service.context(f.token);
+ expect(active.upcoming).toBeNull();
+ expect(active.shifts[0]?.id).toBe(f.scheduleId);
+});

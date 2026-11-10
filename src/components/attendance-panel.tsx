@@ -36,6 +36,15 @@ export function AttendancePanel({view='attendance',fullName}:{view?:'attendance'
   const hide=()=>{if(document.hidden){generation.current++;stopCamera();setCapturing(false)}};
   document.addEventListener('visibilitychange',hide);return()=>document.removeEventListener('visibilitychange',hide);
  },[stopCamera]);
+ useEffect(()=>{
+  if(view!=='attendance'||loading||busy||capturing||photo||context?.open)return;
+  const boundary=context?.shifts[0]?.endsAt??context?.upcoming?.startsAt;
+  const delay=boundary&&context?Math.max(1000,Math.min(60000,Date.parse(boundary)-Date.parse(context.serverTime)+500)):60000;
+  const refresh=()=>{if(!document.hidden)void load()};
+  const timer=setInterval(refresh,delay);
+  document.addEventListener('visibilitychange',refresh);
+  return ()=>{clearInterval(timer);document.removeEventListener('visibilitychange',refresh)};
+ },[view,loading,busy,capturing,photo,context,load]);
  const time=(value:string)=>formatTime(value,context?.timezone??'Asia/Jakarta');
  const active=context?.open?{id:context.open.scheduleId as string,storeName:context.open.storeName as string,rules:context.open.rules}:context?.shifts[0];
  const type=context?.open?'check-out':'check-in';
@@ -85,7 +94,7 @@ export function AttendancePanel({view='attendance',fullName}:{view?:'attendance'
   {loading?<p role="status">Memuat data absensi…</p>:null}
   {error?<div role="alert" className="auth-error"><p>{error}</p>{!photo?<button onClick={()=>void load()} disabled={loading}>Muat ulang</button>:null}</div>:null}
   {result?<section className="panel" role="status"><h2>{result.reviewStatus==='pending'?'Tercatat — menunggu persetujuan':'Absensi berhasil dicatat'}</h2><p>{result.eventType==='check_in'?'Absen masuk':'Absen pulang'} · {time(result.recordedAt)}</p><p>{result.reviewStatus==='pending'?'Bukti sudah terkirim. Pengecualian lokasi masih perlu review owner.':'Lokasi memenuhi aturan jadwal.'}</p>{result.late&&result.eventType==='check_in'?<p>Tercatat terlambat berdasarkan jadwal dan toleransi.</p>:null}</section>:null}
-  {view==='attendance'&&context&&!loading?<section className="panel attendance-capture"><div className="employee-section-heading"><h2>Absensi saya</h2><span className={'employee-status '+(context.open?'is-open':'')}>{context.open?'Sedang bekerja':active?'Siap absen':'Belum ada jadwal'}</span></div><div className="employee-attendance-steps"><span className={!context.open?'current':''}><Icon name="arrow"/>Masuk</span><span className={context.open?'current':''}><Icon name="logout"/>Pulang</span></div>
+  {view==='attendance'&&context&&!loading?<section className="panel attendance-capture"><div className="employee-section-heading"><h2>Absensi saya</h2><span className={'employee-status '+(context.open?'is-open':'')}>{context.open?'Sedang bekerja':active?'Siap absen':context.upcoming?'Menunggu jam masuk':'Tidak ada shift aktif'}</span></div><div className="employee-attendance-steps"><span className={!context.open?'current':''}><Icon name="arrow"/>Masuk</span><span className={context.open?'current':''}><Icon name="logout"/>Pulang</span></div>
    {context.open?.missingCheckout?<p className="auth-error">Sesi sebelumnya belum memiliki absen pulang. Waktu tidak diisi otomatis; jika lupa, hubungi owner untuk peninjauan.</p>:null}
    {active?<><p><strong>{active.storeName as string}</strong> · radius {active.rules.radius_m} m</p>{context.open?<p>Masuk: {time(context.open.checkInAt)} · {context.open.status==='needs_review'?'Memerlukan review':'Sesi terbuka'}. Absen pulang tetap dapat dikirim.</p>:<p>Jadwal: {time(context.shifts[0].startsAt)} – {time(context.shifts[0].endsAt)}</p>}
     {!photo&&!capturing?<div className="employee-capture-action"><button className="employee-camera-action" onClick={()=>void start()} disabled={busy} aria-label={context.open?'Mulai absen pulang dengan selfie dan GPS':'Mulai absen masuk dengan selfie dan GPS'}><Icon name="camera"/><span>{context.open?'Absen pulang':'Absen masuk'}</span></button><p>Ketuk untuk selfie & lokasi</p></div>:null}
@@ -93,7 +102,19 @@ export function AttendancePanel({view='attendance',fullName}:{view?:'attendance'
     {preview?<><figure><Image unoptimized width={960} height={1280} src={preview} className="selfie-preview" alt="Pratinjau selfie sebelum dikirim"/><figcaption>Periksa wajah dan pencahayaan.</figcaption></figure>{!frozen?<button onClick={()=>void start()} disabled={busy}>Ambil ulang</button>:null}</>:null}
     {(capturing||photo)?<div className="gps-status" aria-live="polite"><p>{gpsBusy?'Mengambil lokasi…':classification?statuses[classification.status]:'Lokasi belum tersedia.'}</p>{location?.status==='available'?<p>Akurasi ±{Math.round(location.accuracyM)} m{classification?.distance!==null&&classification?.distance!==undefined?' · Jarak '+Math.round(classification.distance)+' m':''}</p>:null}<button onClick={gps} disabled={gpsBusy||busy||frozen}>Coba GPS lagi</button>{exception?<label>Alasan pengecualian (wajib)<textarea value={reason} onChange={e=>setReason(e.target.value)} minLength={5} maxLength={1000} disabled={frozen}/><span className="hint">Pengiriman ini menunggu persetujuan owner.</span></label>:null}</div>:null}
     {photo?<button className="primary" disabled={busy||gpsBusy||!location||!!exception&&reason.trim().length<5} onClick={()=>void submit()}>{busy?'Mengirim…':frozen?'Kirim ulang foto yang sama':exception?'Ajukan absensi':'Kirim '+(context.open?'absen pulang':'absen masuk')}</button>:null}
-   </>:<div className="employee-empty"><span className="employee-empty-icon"><Icon name="calendar"/></span><h3>Waktunya belum tersedia</h3><p>Belum ada jadwal terbit yang sedang berlangsung. Periksa jadwal Anda atau hubungi owner untuk penugasan.</p><Link className="employee-link" href="/my-schedule">Lihat jadwal saya <Icon name="arrow"/></Link></div>}
+   </>:<div className="employee-empty">
+     <span className="employee-empty-icon"><Icon name="calendar"/></span>
+     {context.upcoming ? <>
+       <h3>Absen masuk dibuka {time(context.upcoming.startsAt)}</h3>
+       <p>{context.upcoming.storeName} · Shift sampai {time(context.upcoming.endsAt)}</p>
+     </> : <>
+       <h3>Tidak ada shift yang bisa diabsen sekarang</h3>
+       <p>Periksa jadwal Anda atau hubungi owner jika jadwal kerja belum diterbitkan.</p>
+     </>}
+     <button className="primary" disabled>Absen masuk</button>
+     <button onClick={()=>void load()}>Cek ulang jadwal</button>
+     <Link className="employee-link" href="/my-schedule">Lihat jadwal saya <Icon name="arrow"/></Link>
+   </div>}
   </section>:null}
   {view==='attendance'?<Link className="employee-quick-link" href="/my-schedule"><span className="employee-quick-icon"><Icon name="calendar"/></span><span><strong>Jadwal saya</strong><small>Lihat waktu dan lokasi kerja</small></span><Icon name="arrow"/></Link>:<Link className="employee-quick-link" href="/my-approvals"><span className="employee-quick-icon"><Icon name="check"/></span><span><strong>Koreksi & persetujuan</strong><small>Ajukan perbaikan dan lihat keputusannya</small></span><Icon name="arrow"/></Link>}
   <section className="panel employee-history"><div className="employee-section-heading"><h2>{view==='history'?'Catatan pengiriman':'Aktivitas terakhir'}</h2>{view==='attendance'?<Link className="employee-link" href="/my-history">Lihat semua</Link>:null}</div>{view==='history'?<p className="hint">Bukti asli tetap tersimpan. Hasil koreksi tersedia di menu Koreksi & persetujuan.</p>:null}{!history.length&&!loading&&!error?<p>Belum ada pengiriman.</p>:null}<ul className="attendance-history">{(view==='history'?history:history.slice(0,3)).map(item=><li key={item.id}><strong>{item.eventType==='check_in'?'Absen masuk':'Absen pulang'}</strong><span>{time(item.recordedAt)}</span><span>{statuses[String(item.locationStatus)]} · {item.reviewStatus==='pending'?'Menunggu persetujuan':item.reviewStatus==='approved'?'Disetujui':item.reviewStatus==='rejected'?'Ditolak':'Tanpa review'}</span><button onClick={async()=>{setPhotoUrl('');try{const data=await api('attendance/'+item.id+'/photo');setPhotoUrl(data.url)}catch(err){setError(err instanceof Error?err.message:'Foto belum tersedia.')}}}>Lihat bukti selfie</button></li>)}</ul>{photoUrl?<a href={photoUrl} target="_blank" rel="noreferrer">Buka foto privat (tautan berlaku 60 detik)</a>:null}{view==='history'?<div className="schedule-week-controls"><button disabled={loading||offset===0} onClick={()=>setOffset(Math.max(0,offset-20))}>Sebelumnya</button><button disabled={loading||!hasMore} onClick={()=>setOffset(offset+20)}>Berikutnya</button></div>:null}</section>

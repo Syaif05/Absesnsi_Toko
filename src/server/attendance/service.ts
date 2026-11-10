@@ -77,11 +77,23 @@ export class AttendanceService {
   async context(token:string) {
     return this.auth.withIdentity(token,async(c,actor)=>{
       const open=(await c.query(`SELECT a.id,a.schedule_id,a.check_in_at,a.status,COALESCE(e.rule_snapshot,a.rule_snapshot) AS rule_snapshot,st.name AS store_name,st.lat,st.lng,st.radius_m FROM attendance.attendance_sessions a LEFT JOIN attendance.attendance_events e ON e.session_id=a.id AND e.event_type='check_in' LEFT JOIN attendance.schedules s ON s.id=a.schedule_id JOIN attendance.stores st ON st.id=COALESCE(e.store_id,s.store_id) WHERE a.employee_id=$1 AND a.check_out_at IS NULL`,[actor.id])).rows[0];
-      const shifts=(await c.query(`SELECT s.id,s.starts_at,s.ends_at,s.rule_snapshot,st.name AS store_name FROM attendance.schedules s JOIN attendance.stores st ON st.id=s.store_id WHERE s.employee_id=$1 AND s.status='published' AND st.is_active AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp() AND NOT EXISTS(SELECT FROM attendance.attendance_sessions a WHERE a.schedule_id=s.id) ORDER BY s.starts_at LIMIT 5`,[actor.id])).rows;
       const now=iso((await c.query('SELECT clock_timestamp() AS time')).rows[0].time);
+      const availableSchedules = `FROM attendance.schedules s
+        JOIN attendance.stores st ON st.id=s.store_id
+        WHERE s.employee_id=$1 AND st.business_id=$2 AND s.status='published' AND st.is_active
+        AND NOT EXISTS(SELECT FROM attendance.attendance_sessions a WHERE a.schedule_id=s.id)`;
+      const params = [actor.id, actor.businessId, now];
+      const shifts = open ? [] : (await c.query(
+        `SELECT s.id,s.starts_at,s.ends_at,s.rule_snapshot,st.name AS store_name
+         ${availableSchedules} AND s.starts_at<=$3 AND s.ends_at>$3 ORDER BY s.starts_at LIMIT 5`,params
+      )).rows;
+      const upcoming = open || shifts.length ? null : (await c.query(
+        `SELECT s.starts_at,s.ends_at,st.name AS store_name
+         ${availableSchedules} AND s.starts_at>$3 ORDER BY s.starts_at,s.id LIMIT 1`,params
+      )).rows[0];
       const rules=(await c.query("SELECT key,value_json FROM attendance.business_settings WHERE business_id=$1 AND key='retention_policy'",[actor.businessId])).rows[0]?.value_json??null;
       const timezone=String((await c.query('SELECT timezone FROM attendance.businesses WHERE id=$1',[actor.businessId])).rows[0].timezone);
-      return {serverTime:now,timezone,open:open?{id:open.id,scheduleId:open.schedule_id,storeName:(open.rule_snapshot as Row).store_name??open.store_name,checkInAt:iso(open.check_in_at),status:open.status,missingCheckout:Date.parse(now)>Date.parse(String((open.rule_snapshot as Row).schedule_ends_at)),rules:ruleSchema.parse(open.rule_snapshot)}:null,shifts:shifts.map(s=>({id:s.id,storeName:s.store_name,startsAt:iso(s.starts_at),endsAt:iso(s.ends_at),rules:ruleSchema.parse(s.rule_snapshot)})),retentionPolicy:rules};
+      return {serverTime:now,timezone,upcoming:upcoming?{storeName:String(upcoming.store_name),startsAt:iso(upcoming.starts_at),endsAt:iso(upcoming.ends_at)}:null,open:open?{id:open.id,scheduleId:open.schedule_id,storeName:(open.rule_snapshot as Row).store_name??open.store_name,checkInAt:iso(open.check_in_at),status:open.status,missingCheckout:Date.parse(now)>Date.parse(String((open.rule_snapshot as Row).schedule_ends_at)),rules:ruleSchema.parse(open.rule_snapshot)}:null,shifts:shifts.map(s=>({id:s.id,storeName:s.store_name,startsAt:iso(s.starts_at),endsAt:iso(s.ends_at),rules:ruleSchema.parse(s.rule_snapshot)})),retentionPolicy:rules};
     });
   }
   async own(token:string,raw:unknown) {
