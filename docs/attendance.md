@@ -54,4 +54,4 @@ Retensi foto sah/audit dan prosedur penghapusan harus disepakati owner sebelum p
 - Bucket privat berhasil dibuat melalui API Storage Supabase di project absensi kita; tanpa data employee atau foto orang. Hasil smoke check dicatat di phase-progress.md.
 - Migrasi 0006 **belum diterapkan ke cloud**: konektor Supabase gagal transport dan direct DATABASE_URL gagal DNS ENOTFOUND pada hostname db.zeegtujueffpmrymnoxu.supabase.co. Cloud terakhir terverifikasi sampai 0005; runtime database tetap perlu koneksi yang dapat dijangkau (misalnya Session pooler dari dashboard Connect).
 - Bootstrap owner operasional tetap belum dijalankan. Alur browser/perangkat fisik dan seluruh pengujian UI/UX **sengaja tidak dijalankan** sesuai instruksi pengguna, termasuk tests/ui dan screenshot. Acceptance perangkat ditunda, bukan diklaim lulus.
-- Keputusan approve/reject dan koreksi waktu belum dibuat (Fase 7). GitHub tidak dipush.
+- Keputusan approve/reject dan koreksi waktu ditambahkan Fase 7; lihat approvals.md. GitHub tidak dipush.

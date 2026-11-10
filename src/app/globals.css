@@ -24,3 +24,21 @@ input,textarea{font-size:16px}.demo-strip select{min-height:44px}.record-main st
 .attendance-history { padding: 0; list-style: none; }
 .attendance-history li { display: grid; gap: 6px; padding-block: 16px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .attendance-page nav a { display: inline-flex; align-items: center; }
+
+.approvals-page { max-width: 900px; margin-inline: auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.approvals-page > .panel { margin-block: 20px; padding: 20px; }
+.approval-filters, .approval-detail, .approval-confirm { display: grid; gap: 14px; }
+.approval-filters label, .approval-detail label { display: grid; gap: 8px; }
+.approval-list { list-style: none; margin: 20px 0; padding: 0; }
+.approval-list li { display: grid; gap: 8px; padding-block: 18px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.approval-list li > div { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+.approval-list small { color: var(--text-secondary); }
+.approval-detail { overflow-wrap: anywhere; }
+.approval-detail input, .approval-detail select, .approval-detail textarea, .approval-filters select { max-width: 100%; min-width: 0; min-height: 44px; padding: 10px; font: inherit; border: 1px solid var(--border); border-radius: 8px; }
+.approval-detail textarea { min-height: 100px; }
+.approval-detail label.approval-checkbox { display: flex; align-items: center; gap: 10px; }
+.approval-checkbox input { flex: 0 0 22px; min-height: 44px; }
+.approval-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.approval-confirm, .correction-change { border-top: 1px solid var(--border); padding-block: 16px; }
+.approval-selfie { display: block; width: 100%; height: auto; max-height: 480px; object-fit: contain; border-radius: 12px; }
+@media (min-width: 768px) { .approval-filters { grid-template-columns: 1fr 1fr auto; align-items: end; } }

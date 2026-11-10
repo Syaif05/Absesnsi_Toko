@@ -43,8 +43,8 @@ export class AuthService {
   if('error' in result)throw result.error;
   return result;
  }
- private async identity(c:SqlConnection,token:string,allowTemporary=false):Promise<Identity>{
-  const row=(await c.query<AccountRow>(`select e.id,e.business_id,e.full_name,e.role,e.status,b.is_active,coalesce(cr.must_change_pin,false) as must_change_pin,null as credential from attendance.auth_sessions s join attendance.employees e on e.id=s.employee_id join attendance.businesses b on b.id=e.business_id left join attendance.employee_credentials cr on cr.employee_id=e.id where s.token_hash=$1 and s.revoked_at is null and s.expires_at>now() and e.business_id=$2 for update of e`,[tokenHash(token),this.businessId])).rows[0];
+ private async identity(c:SqlConnection,token:string,allowTemporary=false,lock=true):Promise<Identity>{
+  const row=(await c.query<AccountRow>(`select e.id,e.business_id,e.full_name,e.role,e.status,b.is_active,coalesce(cr.must_change_pin,false) as must_change_pin,null as credential from attendance.auth_sessions s join attendance.employees e on e.id=s.employee_id join attendance.businesses b on b.id=e.business_id left join attendance.employee_credentials cr on cr.employee_id=e.id where s.token_hash=$1 and s.revoked_at is null and s.expires_at>now() and e.business_id=$2 ${lock?'for update of e':''}`,[tokenHash(token),this.businessId])).rows[0];
   if(!row||row.status!=='active'||!row.is_active)throw new AuthError('UNAUTHENTICATED',401,'Silakan masuk kembali.');
   if(row.must_change_pin&&!allowTemporary)throw new AuthError('PIN_CHANGE_REQUIRED',403,'Ganti PIN sementara sebelum melanjutkan.');
   return {id:row.id,businessId:row.business_id,fullName:row.full_name,role:row.role,mustChangePin:!!row.must_change_pin};
@@ -52,6 +52,17 @@ export class AuthService {
  withIdentity<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){return this.db.transaction(async c=>work(c,await this.identity(c,token)))}
  withOwner<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
   return this.db.transaction(async c=>{const actor=await this.identity(c,token);requireOwner(actor);return work(c,actor)});
+ }
+ // Approval may touch both owner and employee. Lock UUIDs in a stable order, then
+ // revalidate the owner's session after waiting; this avoids cross-owner/FK deadlocks.
+ withOwnerAndEmployee<T>(token:string,employeeId:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
+  z.uuid().parse(employeeId);
+  return this.db.transaction(async c=>{
+   const actor=await this.identity(c,token,false,false);requireOwner(actor);
+   await c.query('select id from attendance.employees where business_id=$1 and id=ANY($2::uuid[]) order by id for update',[actor.businessId,[actor.id,employeeId]]);
+   const current=await this.identity(c,token);requireOwner(current);
+   return work(c,current);
+  });
  }
  me(token:string,allowTemporary=false){return this.db.transaction(c=>this.identity(c,token,allowTemporary))}
  async logout(token:string){await this.db.transaction(async c=>{await c.query('update attendance.auth_sessions set revoked_at=now() where token_hash=$1 and revoked_at is null',[tokenHash(token)])})}

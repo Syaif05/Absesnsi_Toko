@@ -121,3 +121,22 @@ File utama: src/components/attendance-panel.tsx, src/app/attendance/page.tsx, sr
 Cara menjalankan setelah DATABASE_URL dapat dijangkau: `pnpm db:migrate`, `pnpm storage:setup`, `pnpm dev`, login akun yang sah lalu buka `/attendance`. Owner operasional masih perlu bootstrap dengan kredensial pemilik; lakukan konfigurasi toko/karyawan/publish jadwal melalui owner. `pnpm storage:reconcile` dijalankan operator harian untuk upload gagal; bukan penghapusan bukti sah. Panduan penuh di docs/attendance.md.
 
 Batas: retensi/penghapusan otomatis bukti sah belum dioperasionalkan, harus disepakati sebelum pilot. Kamera/GPS bukan verifikasi biometrik/anti-spoof. Upload menahan lock transaksi dengan timeout Storage terbatas; pemisahan lewat lease dapat dievaluasi ketika beban meningkat. GitHub tidak dipush; keputusan approval/koreksi tetap fase berikutnya.
+
+## Fase 7 — Persetujuan & koreksi (10 November 2026)
+
+Implementasi kode/backend selesai; pengujian UI/UX tetap ditunda sesuai instruksi pengguna. Fase 8 tidak dimulai.
+
+- [x] Inbox owner `/owner/approvals`, filter status/jenis dan pagination; employee `/my-approvals` dengan daftar/status milik sendiri, detail dan formulir koreksi jadwal.
+- [x] Detail waktu resmi vs bukti asli, selfie privat terotorisasi, GPS/akurasi/jarak, aturan jadwal, nilai sebelum/diminta/diterapkan, reviewer/catatan/waktu keputusan.
+- [x] Approve/reject dengan konfirmasi dan catatan wajib; server owner/business guard, CSRF, validasi, rate limit persisten, lock berurutan dan keputusan final sekali saja.
+- [x] Koreksi jam masuk/pulang, missing check-in/out dan shift lintas tanggal; request key/hash, satu koreksi pending per jadwal, baseline/versi stale ditolak. Sebelum approval waktu resmi tidak berubah.
+- [x] Catatan efektif sesi, is_corrected/snapshot, event/foto/GPS asli immutable, correction history dan audit before/after; tidak membuat bukti kamera fiktif. Checkout normal tetap dapat mengikuti approved missing check-in.
+- [x] Status needs_review/corrected/completed/open konsisten: koreksi waktu tidak menghilangkan review lokasi. Kegagalan audit me-rollback keputusan dan perubahan absensi.
+- [x] Migrasi 0007 dan SQL gabungan fresh database mencakup seluruh skema Fase 7; tetap 18 tabel RLS. Snapshot lama di-backfill, tanpa menghapus histori.
+- [x] **92 tes backend lulus** (66 regresi + 26 baru), lint, TypeScript, dan build produksi diperiksa. Tes meliputi approve/reject, dua owner mencoba memutuskan, rollback, immutability, missing events, stale baseline/jadwal, timezone, CSRF/konfirmasi, rate limit dan ownership/business.
+- [ ] Migrasi cloud 0006–0007: belum diterapkan. Direct DATABASE_URL masih gagal DNS ENOTFOUND; plugin Supabase gagal transport. Cloud terakhir terverifikasi sampai 0005; bucket privat Fase 6 tidak diubah.
+- [ ] UI DOM, browser, screenshot, perangkat nyata dan UI/UX: sengaja tidak dijalankan. Native PostgreSQL multikoneksi belum diuji; tes paralel PGlite membuktikan hasil adapter tes, bukan stress test server multi-koneksi.
+
+File utama: src/server/approvals (service/validation/http/models), src/components/approvals-panel.tsx, halaman owner/approvals dan my-approvals, routes API approvals dan me/correction-targets, src/server/attendance/state.ts, perubahan auth locking dan integrasi absensi, drizzle/0007_approval_corrections.sql, supabase/sql/001_schema_all.sql, tests/integration/approvals.test.ts, docs/approvals.md. Navigasi owner/employee dan CSS diperbarui.
+
+Menjalankan: setelah koneksi PostgreSQL dapat dijangkau, `pnpm db:migrate`, `pnpm dev`; login owner ke `/owner/approvals` atau employee ke `/my-approvals`. Akun owner operasional masih perlu bootstrap sesuai panduan auth. Dokumen approvals.md memuat kontrak, aturan status, concurrency dan batas verifikasi. GitHub tidak dipush; tidak ada seed atau data employee cloud yang dibuat.

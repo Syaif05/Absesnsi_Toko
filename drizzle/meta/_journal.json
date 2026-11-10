@@ -50,6 +50,13 @@
       "when": 1794273586916,
       "tag": "0006_attendance_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794274154113,
+      "tag": "0007_approval_corrections",
+      "breakpoints": true
     }
   ]
 }

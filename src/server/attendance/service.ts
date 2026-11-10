@@ -5,6 +5,7 @@ import { AuthError, requireOwnResource, type SqlConnection } from '../auth/types
 import type { StorageProvider } from '../storage/provider';
 import { submissionSchema, ruleSchema, classifyLocation } from './validation';
 import { validatePhoto } from './photo';
+import { refreshSessionStatus } from './state';
 export type EventType = 'check_in' | 'check_out';
 type Row = Record<string,unknown>;
 const iso=(value:unknown)=>value instanceof Date?value.toISOString():String(value);
@@ -42,14 +43,14 @@ export class AttendanceService {
         if(!found)conflict('ATTENDANCE_OUTSIDE_SCHEDULE','Tidak ada jadwal aktif yang sesuai. Hubungi owner untuk penugasan.');
         if((await c.query('SELECT id FROM attendance.attendance_sessions WHERE schedule_id=$1',[input.scheduleId])).rows.length)conflict('ALREADY_CHECKED_IN','Jadwal ini sudah memiliki absensi.');
         schedule=found;
-        snapshot={...ruleSchema.parse(schedule.rule_snapshot),schedule_starts_at:iso(schedule.starts_at),schedule_ends_at:iso(schedule.ends_at),store_name:schedule.store_name};
+        snapshot={...ruleSchema.parse(schedule.rule_snapshot),store_id:schedule.store_id,schedule_starts_at:iso(schedule.starts_at),schedule_ends_at:iso(schedule.ends_at),store_name:schedule.store_name};
       } else {
         if(!open||open.schedule_id!==input.scheduleId)conflict('NO_OPEN_SESSION','Tidak ada sesi milik Anda yang dapat diabsen pulang.');
         session=open;
         const original=(await c.query(`SELECT store_id,rule_snapshot FROM attendance.attendance_events WHERE session_id=$1 AND event_type='check_in'`,[session.id])).rows[0];
-        if(!original)conflict('MISSING_CHECK_IN','Bukti absen masuk belum tersedia. Hubungi owner.');
-        snapshot=ruleSchema.parse(original.rule_snapshot);
-        schedule={id:input.scheduleId,store_id:original.store_id};
+        if(!original&&!session.is_corrected)conflict('MISSING_CHECK_IN','Bukti absen masuk belum tersedia. Hubungi owner.');
+        snapshot=ruleSchema.parse(original?.rule_snapshot??session.rule_snapshot);
+        schedule={id:input.scheduleId,store_id:original?.store_id??snapshot.store_id};
       }
       const location=classifyLocation(input.location,ruleSchema.parse(snapshot)),pending=location.status!=='inside';
       if(pending&&input.reason.length<5)throw new AuthError('REASON_REQUIRED',400,'Isi alasan minimal 5 karakter untuk pengecualian lokasi.');
@@ -57,13 +58,13 @@ export class AttendanceService {
       const late=type==='check_in'&&Date.parse(now)>Date.parse(String(snapshot.schedule_starts_at))+Number(snapshot.grace_minutes)*60000;
       snapshot={...snapshot,...(type==='check_in'?{late}:{}),location_policy:'schedule_snapshot'};
       await this.storage.uploadPrivate(String(upload.photo_path),photo);
-      if(!session)session=(await c.query(`INSERT INTO attendance.attendance_sessions(employee_id,schedule_id,check_in_at,status) VALUES($1,$2,$3,$4) RETURNING *`,[actor.id,input.scheduleId,now,pending?'needs_review':'open'])).rows[0];
+      if(!session)session=(await c.query(`INSERT INTO attendance.attendance_sessions(employee_id,schedule_id,check_in_at,status,rule_snapshot) VALUES($1,$2,$3,$4,$5) RETURNING *`,[actor.id,input.scheduleId,now,pending?'needs_review':'open',JSON.stringify(snapshot)])).rows[0];
       const gps=input.location.status==='available'?input.location:null;
       const event=(await c.query(`INSERT INTO attendance.attendance_events(session_id,employee_id,store_id,event_type,recorded_at,photo_path,lat,lng,accuracy_m,distance_m,location_status,review_status,reason,idempotency_key,rule_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id,session_id,event_type,recorded_at,location_status,review_status,rule_snapshot`,[session.id,actor.id,schedule.store_id,type,now,upload.photo_path,gps?.lat??null,gps?.lng??null,gps?.accuracyM??null,location.distance,location.status,pending?'pending':'not_required',input.reason||null,input.idempotencyKey,JSON.stringify(snapshot)])).rows[0];
       if(pending)await c.query(`INSERT INTO attendance.approval_requests(requester_id,type,target_type,target_id,reason) VALUES($1,'location_exception','attendance_event',$2,$3)`,[actor.id,event.id,input.reason]);
       if(type==='check_out') {
-        const needsReview=pending||(await c.query(`SELECT id FROM attendance.attendance_events WHERE session_id=$1 AND review_status IN ('pending','rejected')`,[session.id])).rows.length>0;
-        await c.query('UPDATE attendance.attendance_sessions SET check_out_at=$1,status=$2 WHERE id=$3',[now,needsReview?'needs_review':'completed',session.id]);
+        await c.query('UPDATE attendance.attendance_sessions SET check_out_at=$1 WHERE id=$2',[now,session.id]);
+        await refreshSessionStatus(c,String(session.id));
       }
       await c.query("UPDATE attendance.attendance_uploads SET state='completed' WHERE id=$1",[upload.id]);
       await c.query(`INSERT INTO attendance.audit_logs(actor_id,action,entity_type,entity_id,metadata_redacted) VALUES($1,$2,'attendance_event',$3,$4)`,[actor.id,'attendance.'+type,event.id,JSON.stringify({sessionId:session.id,locationStatus:location.status,reviewStatus:event.review_status})]);
@@ -75,7 +76,7 @@ export class AttendanceService {
   }
   async context(token:string) {
     return this.auth.withIdentity(token,async(c,actor)=>{
-      const open=(await c.query(`SELECT a.id,a.schedule_id,a.check_in_at,a.status,e.rule_snapshot,st.name AS store_name,st.lat,st.lng,st.radius_m FROM attendance.attendance_sessions a JOIN attendance.attendance_events e ON e.session_id=a.id AND e.event_type='check_in' JOIN attendance.stores st ON st.id=e.store_id WHERE a.employee_id=$1 AND a.check_out_at IS NULL`,[actor.id])).rows[0];
+      const open=(await c.query(`SELECT a.id,a.schedule_id,a.check_in_at,a.status,COALESCE(e.rule_snapshot,a.rule_snapshot) AS rule_snapshot,st.name AS store_name,st.lat,st.lng,st.radius_m FROM attendance.attendance_sessions a LEFT JOIN attendance.attendance_events e ON e.session_id=a.id AND e.event_type='check_in' LEFT JOIN attendance.schedules s ON s.id=a.schedule_id JOIN attendance.stores st ON st.id=COALESCE(e.store_id,s.store_id) WHERE a.employee_id=$1 AND a.check_out_at IS NULL`,[actor.id])).rows[0];
       const shifts=(await c.query(`SELECT s.id,s.starts_at,s.ends_at,s.rule_snapshot,st.name AS store_name FROM attendance.schedules s JOIN attendance.stores st ON st.id=s.store_id WHERE s.employee_id=$1 AND s.status='published' AND st.is_active AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp() AND NOT EXISTS(SELECT FROM attendance.attendance_sessions a WHERE a.schedule_id=s.id) ORDER BY s.starts_at LIMIT 5`,[actor.id])).rows;
       const now=iso((await c.query('SELECT clock_timestamp() AS time')).rows[0].time);
       const rules=(await c.query("SELECT key,value_json FROM attendance.business_settings WHERE business_id=$1 AND key='retention_policy'",[actor.businessId])).rows[0]?.value_json??null;

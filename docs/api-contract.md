@@ -52,4 +52,15 @@ POST memerlukan Origin sama dengan APP_BASE_URL; **multipart/form-data**, bukan 
 
 Tidak ada employeeId/time/radius yang dapat ditentukan client. Retry memakai foto + metadata + key persis sama. Kunci yang sama dengan payload berbeda: 409 IDEMPOTENCY_CONFLICT; retry yang sudah commit mengembalikan event lama. Batas 20 kunci baru/jam/employee, error 429. Error format/foto/alasan 400, body >528 KiB 413, sesi/jadwal/expired/conflict 409, infrastruktur 503. Kegagalan jaringan/503 belum mengonfirmasi pengiriman; gunakan retry identik atau periksa riwayat. Semua response no-store, tanpa path foto/secret pada daftar.
 
-Detail recovery, transaction dan signed URL di `docs/attendance.md`. Endpoint keputusan approval/koreksi belum tersedia.
+Detail recovery, transaction dan signed URL di `docs/attendance.md`. Endpoint keputusan approval/koreksi ditambahkan Fase 7 di bagian berikutnya.
+
+## API Fase 7 — Persetujuan dan koreksi
+
+| Method | Endpoint | Isi |
+|---|---|---|
+| GET/POST | `/api/v1/approvals` | Daftar scoped / pengajuan koreksi atau recovery exception |
+| GET | `/api/v1/approvals/:id` | Detail bukti asli, nilai sebelum/diminta/diterapkan, catatan resmi dan reviewer |
+| POST | `/api/v1/approvals/:id/decision` | Owner: status approved/rejected, note, confirmed:true |
+| GET | `/api/v1/me/correction-targets` | Jadwal sendiri yang dapat diajukan, effective times dan timezone |
+
+Daftar: view=mine/inbox (inbox owner saja), status=all/pending/approved/rejected, type opsional, storeId opsional, offset. Maksimal 20 baris. POST JSON, Origin sama, body ≤4096 byte. Koreksi memakai requestKey UUID dan changes satu/dua field check_in_at/check_out_at dengan ISO8601 bertanda zona. Keputusan wajib catatan dan konfirmasi; final. Konflik baseline, pending duplikat atau keputusan ulang: 409. Rate limit persisten 20 pengajuan baru dan 60 keputusan per 15 menit per actor. Bukti asli tidak ditimpa. Kontrak lengkap dan contoh ada di [approvals.md](approvals.md).

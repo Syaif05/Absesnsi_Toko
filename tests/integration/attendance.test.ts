@@ -142,9 +142,10 @@ it('preserves check-in rules for checkout after schedule, radius or store status
  }finally{await pg.query<Record<string,unknown>>('UPDATE attendance.stores SET is_active=true WHERE id=$1',[storeId])}
 });
 it('never fills missing checkout and blocks a new check-in while an old session remains open',async()=>{
- const f=await fixture(),saved=await submit(f);
- const event=(await pg.query<Record<string,unknown>>('SELECT rule_snapshot FROM attendance.attendance_events WHERE id=$1',[saved.id])).rows[0].rule_snapshot as Record<string,unknown>;
- await pg.query<Record<string,unknown>>('UPDATE attendance.attendance_events SET rule_snapshot=$2 WHERE id=$1',[saved.id,JSON.stringify({...event,schedule_ends_at:'2020-01-01T00:00:00Z'})]);
+ const f=await fixture();
+ const session=(await pg.query<Record<string,unknown>>("INSERT INTO attendance.attendance_sessions(employee_id,schedule_id,check_in_at) VALUES($1,$2,now()-interval '2 days') RETURNING id",[f.id,f.scheduleId])).rows[0];
+ await pg.query<Record<string,unknown>>(`INSERT INTO attendance.attendance_events(session_id,employee_id,store_id,event_type,photo_path,location_status,review_status,idempotency_key,rule_snapshot) VALUES($1,$2,$3,'check_in','fixture/missing-checkout','inside','not_required',$4,$5)`,[session.id,f.id,storeId,randomUUID(),JSON.stringify({...rules,schedule_starts_at:'2020-01-01T00:00:00Z',schedule_ends_at:'2020-01-01T08:00:00Z'})]);
+ const saved={sessionId:session.id};
  expect((await service.context(f.token)).open?.missingCheckout).toBe(true);
  expect((await pg.query<Record<string,unknown>>('SELECT check_out_at FROM attendance.attendance_sessions WHERE id=$1',[saved.sessionId])).rows[0].check_out_at).toBeNull();
  await expect(submit(f,'check_in',{...f.input,idempotencyKey:randomUUID()})).rejects.toMatchObject({code:'OPEN_SESSION'});
