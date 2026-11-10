@@ -47,3 +47,9 @@ export const rangeSchema = z
     offset: z.coerce.number().int().min(0).default(0),
   })
   .strict();
+
+export const batchScheduleSchema = z.object({
+  items: z.array(scheduleSchema).min(1).max(100),
+  publish: z.boolean().default(false),
+  confirmed: z.boolean().default(false),
+}).strict().refine(value => !value.publish || value.confirmed, {message:"Konfirmasi diperlukan untuk menerbitkan jadwal."});

@@ -66,15 +66,12 @@ function Field({
   );
 }
 export function OwnerPanel({
-  fullName,
   initialTab = "stores",
 }: {
   fullName: string;
   initialTab?: "stores" | "employees" | "settings";
 }) {
-  const [tab, setTab] = useState<"stores" | "employees" | "settings">(
-    initialTab,
-  );
+  const tab = initialTab;
   const [items, setItems] = useState<(Store | Employee)[]>([]),
     [stores, setStores] = useState<Store[]>([]),
     [settings, setSettings] = useState<BusinessSettings | null>(null);
@@ -111,30 +108,19 @@ export function OwnerPanel({
       setLoading(true);
       setError("");
       try {
-        const [choices, preferences] = await Promise.all([
-          allStores(),
+        const params = new URLSearchParams({q: query,offset: String(offset)});
+        if (status) params.set("status", status);
+        if (storeFilter && tab === "employees") params.set("storeId", storeFilter);
+        const [choices, preferences, data] = await Promise.all([
+          tab === "employees" ? allStores() : Promise.resolve([]),
           request<BusinessSettings>("settings"),
+          tab !== "settings" ? request<Page<Store | Employee>>(tab + "?" + params) : Promise.resolve(null),
         ]);
-        if (!cancelled) setSettings(preferences);
-        if (tab === "settings") {
-          if (!cancelled) setSettings(preferences);
-        } else {
-          const params = new URLSearchParams({
-            q: query,
-            offset: String(offset),
-          });
-          if (status) params.set("status", status);
-          if (storeFilter && tab === "employees")
-            params.set("storeId", storeFilter);
-          const data = await request<Page<Store | Employee>>(
-            tab + "?" + params,
-          );
-          if (!cancelled) {
-            setItems(data.items);
-            setHasMore(data.hasMore);
-          }
+        if (!cancelled) {
+          setSettings(preferences);
+          setStores(choices);
+          if (data) { setItems(data.items); setHasMore(data.hasMore); }
         }
-        if (!cancelled) setStores(choices);
       } catch (err) {
         if (!cancelled)
           setError(
@@ -149,17 +135,6 @@ export function OwnerPanel({
       cancelled = true;
     };
   }, [tab, query, status, storeFilter, offset, refresh]);
-  const changeTab = (next: typeof tab) => {
-    window.history.replaceState(null, "", "?tab=" + next);
-    setTab(next);
-    setOffset(0);
-    setQuery("");
-    setStatus("");
-    setStoreFilter("");
-    setPin(null);
-    setNotice("");
-    setFormError(null);
-  };
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editor || busy) return;
@@ -311,36 +286,6 @@ export function OwnerPanel({
         } as CSSProperties
       }
     >
-      <header className="owner-live-header">
-        <div>
-          <span className="eyebrow">RUANG KERJA OWNER</span>
-          <h1>{settings?.businessName ?? "Kelola usaha"}</h1>
-          <p>{fullName}</p>
-        </div>
-        <Link href="/account" className="owner-account">
-          Akun & keluar <Icon name="arrow" />
-        </Link>
-      </header>
-      <nav className="owner-tabs" aria-label="Administrasi owner">
-        {(
-          [
-            ["stores", "Toko", "store"],
-            ["employees", "Karyawan", "people"],
-            ["settings", "Pengaturan", "settings"],
-          ] as const
-        ).map(([value, label, icon]) => (
-          <button
-            aria-current={tab === value ? "page" : undefined}
-            className={tab === value ? "active" : ""}
-            key={value}
-            onClick={() => changeTab(value)}
-          >
-            <Icon name={icon} />
-            {label}
-          </button>
-        ))}
-        <Link href="/owner/dashboard" className="text-button">Dashboard</Link><Link href="/owner/reports" className="text-button">Laporan</Link><Link href="/owner/approvals" className="text-button">Persetujuan</Link><Link href="/owner/schedules"><Icon name="calendar"/>Jadwal</Link>
-      </nav>
       <main className="owner-content">
         <div className="page-heading">
           <div>
@@ -354,7 +299,7 @@ export function OwnerPanel({
             <p>
               {tab === "settings"
                 ? "Aturan baru berlaku untuk transaksi berikutnya."
-                : "Data tersimpan di server. Histori tetap dipertahankan."}
+                : tab === "employees" ? "Kelola profil, akses login, dan penugasan karyawan." : "Atur lokasi dan radius absensi setiap toko."}
             </p>
           </div>
           {tab !== "settings" ? (
@@ -371,6 +316,7 @@ export function OwnerPanel({
             </button>
           ) : null}
         </div>
+        {tab === "employees" ? <Link className="owner-inline-link" href="/owner/schedules"><Icon name="calendar"/> Kelola jadwal karyawan <Icon name="arrow"/></Link> : null}
         {notice ? (
           <p role="status" className="auth-notice">
             {notice}
@@ -656,13 +602,15 @@ export function OwnerPanel({
                 />
                 <Field
                   name="code"
-                  title="ID login (kosongkan untuk otomatis)"
+                  title={employeeItem ? "ID login" : "ID login (opsional)"}
+                  placeholder="Dibuat otomatis saat disimpan"
                   maxLength={64}
                   pattern="[A-Za-z0-9_-]+"
                   required={!!employeeItem}
                   defaultValue={employeeItem?.employee_code}
                   issue={formError?.fields.code}
                 />
+                {!employeeItem ? <p className="owner-form-note">ID unik dan PIN 6 digit dibuat otomatis. PIN ditampilkan sekali setelah karyawan disimpan.</p> : null}
                 <label>
                   Toko asal
                   <select
@@ -860,8 +808,7 @@ function SettingsForm({
           issue={error?.fields.graceMinutes}
         />
         <p className="hint">
-          Versi aturan {value.version}. Perubahan tidak mengubah snapshot
-          absensi historis.
+          Perubahan berlaku untuk penugasan berikutnya. Catatan absensi sebelumnya tetap menggunakan aturan saat itu.
         </p>
         {error ? (
           <div role="alert" className="auth-error">

@@ -434,3 +434,53 @@ it("changing business timezone never reinterprets an existing draft local clock"
   expect(record.starts_at).toBe(old);
   expect(record.rule_snapshot.timezone).toBe("Asia/Jakarta");
 });
+
+it('batch creates audited overnight drafts and retries cannot duplicate them', async () => {
+  const items=[{...input(),templateId:null,date:'2027-02-01'},{...input(),templateId:null,date:'2027-02-02'}];
+  const result=await service.createBatch(token,{items});
+  expect(result.count).toBe(2);
+  expect(result.items.every(row=>row.status==='draft')).toBe(true);
+  expect(Date.parse(result.items[0].ends_at)-Date.parse(result.items[0].starts_at)).toBe(9*3600000);
+  const audits=await pg.query<{count:number}>("select count(*)::int as count from attendance.audit_logs where entity_id=any($1::uuid[]) and action='schedule.create'",[result.items.map(row=>row.id)]);
+  expect(audits.rows[0].count).toBe(2);
+  await expect(service.createBatch(token,{items})).rejects.toMatchObject({code:'SCHEDULE_OVERLAP'});
+});
+it('batch rolls back all drafts and audits when a later item overlaps', async () => {
+  const before=(await pg.query<{count:number}>('select count(*)::int as count from attendance.schedules')).rows[0].count;
+  const auditBefore=(await pg.query<{count:number}>('select count(*)::int as count from attendance.audit_logs')).rows[0].count;
+  await expect(service.createBatch(token,{items:[{...input(),templateId:null,date:'2027-02-03'},{...input(),templateId:null,date:'2027-02-02'}]})).rejects.toMatchObject({code:'SCHEDULE_OVERLAP'});
+  expect((await pg.query<{count:number}>('select count(*)::int as count from attendance.schedules')).rows[0].count).toBe(before);
+  expect((await pg.query<{count:number}>('select count(*)::int as count from attendance.audit_logs')).rows[0].count).toBe(auditBefore);
+});
+it('batch rejects internal overlaps, oversized payloads and employee access', async () => {
+  const value={...input(),templateId:null,date:'2027-03-01'};
+  await expect(service.createBatch(token,{items:[value,value]})).rejects.toMatchObject({code:'SCHEDULE_OVERLAP'});
+  expect((await handler(req('POST',{items:Array.from({length:101},()=>value)}),'batch')).status).toBe(400);
+  const currentEmployeeToken=(await auth.login('employee','SCH-1','654321')).token;
+  expect((await handler(req('POST',{items:[value]},currentEmployeeToken),'batch')).status).toBe(403);
+  const foreign=new NextRequest('http://localhost:3000/api/v1/schedules/batch',{method:'POST',headers:{origin:'https://other.example','content-type':'application/json',cookie:cookieName+'='+token},body:JSON.stringify({items:[value]})});
+  expect((await handler(foreign,'batch')).status).toBe(403);
+});
+it('batch rejects inactive targets without partial writes', async () => {
+  await owner.updateEmployee(token,employee.id,{status:'inactive',confirmSensitive:true});
+  await expect(service.createBatch(token,{items:[{...input(),templateId:null,date:'2027-04-01'}]})).rejects.toMatchObject({code:'INVALID_ASSIGNMENT'});
+  await owner.updateEmployee(token,employee.id,{status:'active',confirmSensitive:true});
+});
+
+it('batch API accepts more than the single-form body limit and creates all drafts', async () => {
+  const items=Array.from({length:30},(_,i)=>({...input(),templateId:null,date:`2028-06-${String(i+1).padStart(2,'0')}`}));
+  expect(JSON.stringify({items}).length).toBeGreaterThan(4096);
+  const response=await handler(req('POST',{items}),'batch');
+  expect(response.status).toBe(201);
+  expect((await response.json()).data.count).toBe(30);
+});
+it('batch publishing requires confirmation and makes schedules visible to the employee', async () => {
+  const items=[{...input(),templateId:null,date:'2028-07-01'}];
+  expect((await handler(req('POST',{items,publish:true}),'batch')).status).toBe(400);
+  const response=await handler(req('POST',{items,publish:true,confirmed:true}),'batch');
+  expect(response.status).toBe(201);
+  expect((await response.json()).data.items[0].status).toBe('published');
+  const current=(await auth.login('employee','SCH-1','654321')).token;
+  const own=await service.own(current,{from:'2028-07-01',to:'2028-07-03'});
+  expect(own.items).toHaveLength(1);
+});

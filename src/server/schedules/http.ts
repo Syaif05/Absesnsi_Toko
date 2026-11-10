@@ -1,3 +1,4 @@
+import { readBoundedBytes } from '../security/body';
 import { reportFailure } from '../security/observability';
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -10,7 +11,7 @@ export function createScheduleHandler(
 ) {
   return async (
     request: NextRequest,
-    resource: "schedules" | "templates" | "people" | "mine",
+    resource: "schedules" | "templates" | "people" | "mine" | "batch",
     id?: string,
   ) => {
     try {
@@ -28,6 +29,7 @@ export function createScheduleHandler(
         token = request.cookies.get(cookieName)?.value ?? "";
       let data: unknown,
         status = 200;
+      if (resource === "batch" && request.method !== "POST") throw new AuthError("METHOD_NOT_ALLOWED",405,"Metode tidak diizinkan.");
       if (request.method === "GET") {
         const p = Object.fromEntries(request.nextUrl.searchParams);
         data =
@@ -44,8 +46,16 @@ export function createScheduleHandler(
                 : await schedules.people(token, p.offset);
       } else {
         assertSameOrigin(request, origin);
-        const body = await readBody(request);
-        if (resource === "templates" && request.method === "POST" && !id) {
+        let body: unknown;
+        if (resource === "batch") {
+          const bytes = await readBoundedBytes(request, 65536);
+          try { body = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(bytes)); }
+          catch { throw new AuthError('INVALID_INPUT',400,'Data JSON tidak valid.'); }
+        } else body = await readBody(request);
+        if (resource === "batch" && request.method === "POST") {
+          data = await schedules.createBatch(token, body);
+          status = 201;
+        } else if (resource === "templates" && request.method === "POST" && !id) {
           data = await schedules.saveTemplate(token, body);
           status = 201;
         } else if (resource === "templates" && request.method === "PATCH" && id)

@@ -41,5 +41,5 @@ export default async function OwnerPage({
       </main>
     );
   }
-  return <OwnerPanel fullName={actor.fullName} initialTab={tab} />;
+  return <OwnerPanel key={tab} fullName={actor.fullName} initialTab={tab} />;
 }

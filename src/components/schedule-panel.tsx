@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ScheduleGenerator } from "./schedule-generator";
 import { Icon, Modal } from "./ui";
 import type {
   ShiftTemplate,
@@ -64,7 +64,6 @@ function onDay(r: ScheduledShift, day: string, timezone: string) {
 }
 
 export function SchedulePanel({
-  fullName,
   timezone,
   initialDate,
 }: {
@@ -102,11 +101,6 @@ export function SchedulePanel({
       setLoading(true);
       setError("");
       try {
-        const [ts, ps, ss] = await Promise.all([
-          choices<ShiftTemplate>("shift-templates"),
-          choices<SchedulePerson>("schedule-people"),
-          choices<Store>("stores"),
-        ]);
         const params = new URLSearchParams({
           from: week,
           to: dayAfter(week, 7),
@@ -115,7 +109,12 @@ export function SchedulePanel({
         if (storeId) params.set("storeId", storeId);
         if (employeeId) params.set("employeeId", employeeId);
         if (status) params.set("status", status);
-        const data = await api<Page<ScheduledShift>>("schedules?" + params);
+        const [ts, ps, ss, data] = await Promise.all([
+          choices<ShiftTemplate>("shift-templates"),
+          choices<SchedulePerson>("schedule-people"),
+          choices<Store>("stores"),
+          api<Page<ScheduledShift>>("schedules?" + params),
+        ]);
         if (!cancelled) {
           setRows(data.items);
           setHasMore(data.hasMore);
@@ -137,6 +136,7 @@ export function SchedulePanel({
       cancelled = true;
     };
   }, [week, storeId, employeeId, status, offset, revision]);
+  const [generating, setGenerating] = useState(false);
   const reload = () => setRevision((v) => v + 1);
   async function decide(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -163,18 +163,6 @@ export function SchedulePanel({
   }
   return (
     <div className="owner-live">
-      <header className="owner-live-header">
-        <div>
-          <span className="eyebrow">RUANG KERJA OWNER</span>
-          <h1>Jadwal & shift</h1>
-          <p>
-            {fullName} · {timezone}
-          </p>
-        </div>
-        <Link className="owner-account" href="/owner">
-          Kelola usaha <Icon name="arrow" />
-        </Link>
-      </header>
       <nav className="owner-tabs" aria-label="Navigasi jadwal">
         <button
           className={tab === "week" ? "active" : ""}
@@ -214,6 +202,7 @@ export function SchedulePanel({
             Tambah {tab === "week" ? "jadwal" : "template"}
           </button>
         </div>
+        {tab === "week" ? <button className="owner-generator-trigger" disabled={loading || busy || !!error} onClick={()=>setGenerating(true)}><Icon name="calendar"/><span><strong>Buat jadwal otomatis</strong><small>Pilih karyawan, hari kerja, dan jam shift sekaligus.</small></span><Icon name="arrow"/></button> : null}
         {notice ? (
           <p role="status" className="auth-notice">
             {notice}
@@ -330,7 +319,7 @@ export function SchedulePanel({
                     </p>
                     <small>
                       Toleransi {t.grace_minutes} menit ·{" "}
-                      {t.is_active ? "Aktif" : "Nonaktif"} · versi {t.version}
+                      {t.is_active ? "Aktif" : "Nonaktif"}
                     </small>
                   </div>
                   <button
@@ -432,7 +421,7 @@ export function SchedulePanel({
                         );
                       })}
                     {!rows.some((r) => onDay(r, day, timezone)) ? (
-                      <p className="day-empty">Belum ada jadwal.</p>
+                      <p className="day-empty">{offset > 0 || hasMore ? "Tidak ada jadwal pada halaman ini." : "Belum ada jadwal."}</p>
                     ) : null}
                   </section>
                 ),
@@ -456,6 +445,7 @@ export function SchedulePanel({
           </>
         )}
       </main>
+      {generating ? <ScheduleGenerator people={people} stores={stores} templates={templates} date={week} timezone={timezone} onClose={()=>setGenerating(false)} onSaved={(count,published)=>{setGenerating(false);setNotice(published ? `${count} jadwal berhasil dibuat dan diterbitkan.` : `${count} draft jadwal berhasil dibuat. Periksa lalu terbitkan jadwal.`);reload()}}/> : null}
       {editor ? (
         <Modal
           title={

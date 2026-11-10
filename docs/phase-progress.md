@@ -224,3 +224,16 @@ Login kini memakai form flat satu kolom, pemilih akun pill, tombol hitam, input 
 Menu karyawan disederhanakan mengikuti login baru dan referensi: EmployeeShell, navigasi bawah Absensi/Jadwal/Riwayat/Pengaturan, kartu putih, latar terang, CTA kamera biru serta tombol hitam. Aksi masuk/pulang ditentukan sesi server, bukan toggle bebas. Riwayat memiliki route /my-history yang tetap dijaga auth, foto privat dan pagination. Jadwal, koreksi employee dan akun memakai shell konsisten; layout owner tetap. Tidak mengubah DB, credential, aturan GPS/selfie/idempotency atau menambah data contoh.
 
 136 tes backend/11 file, lint dan build lulus; typecheck/scanner browser diperiksa sebelum commit. Tidak menjalankan tes UI/UX/DOM/viewport/perangkat sesuai instruksi pengguna. Detail komponen, URL, state dan batas verifikasi di docs/employee-menu-revision.md.
+
+## Revisi owner — 10 November 2026
+
+- [x] Shell owner bersama, sidebar desktop dan menu HP, gaya form/daftar/modal konsisten dengan login.
+- [x] Dashboard grafik data nyata, periode cepat, laporan dan pengajuan terpisah.
+- [x] ID/PIN otomatis dari server dipertahankan dan dijelaskan pada form karyawan.
+- [x] Generator jadwal berulang multi-karyawan, preview, draft/publish terkonfirmasi, transaksi atomic dan validasi bentrok.
+- [x] Tidak ada migrasi/destructive write atau perubahan akun produksi.
+- [ ] Review UI/perangkat ditunda atas instruksi pengguna; tidak diklaim lulus.
+
+Rincian: [Revisi ruang owner](owner-menu-revision.md). Verifikasi backend/build dicatat setelah seluruh pemeriksaan selesai. Batas generator: 100 jadwal per operasi, pola hari eksplisit, tidak menebak rotasi atau cuti.
+
+Verifikasi revisi owner: `pnpm test:server` **142/142 lulus (11 file)**; `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm security:client`, dan `git diff --check` lulus. Tidak menjalankan browser, screenshot, atau tes UI. Tidak ada perubahan skema/ENV.

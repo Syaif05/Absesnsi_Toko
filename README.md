@@ -106,3 +106,5 @@ Akun owner pertama belum bootstrap, jadi belum ada kredensial login awal. Prefli
 Login sederhana untuk HP, ikon mata, feedback animasi berhasil/gagal, dan menu Akun → Ganti PIN/password opsional tersedia. PIN awal maupun hasil reset langsung dapat digunakan tanpa dipaksa mengganti PIN. Credential yang sudah diberikan tetap berlaku. [Catatan perubahan dan verifikasi](docs/login-revision.md). Pengujian UI/UX tetap ditunda.
 
 Menu karyawan kini memakai navigasi bawah **Absensi, Jadwal, Riwayat, Pengaturan**. Riwayat bukti berada di `/my-history`, koreksi/persetujuan dapat dibuka dari sana. [Catatan revisi menu](docs/employee-menu-revision.md). Desain mengikuti login baru; pengujian UI/UX tetap ditunda.
+
+Revisi antarmuka owner dan generator jadwal: [panduan ruang owner](docs/owner-menu-revision.md).

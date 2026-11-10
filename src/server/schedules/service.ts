@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AuthService } from "../auth/service";
 import { AuthError, type Identity, type SqlConnection } from "../auth/types";
 import {
+  batchScheduleSchema,
   templateSchema,
   editTemplateSchema,
   scheduleSchema,
@@ -243,35 +244,61 @@ export class ScheduleService {
         : null,
     };
   }
+  private async insert(c: SqlConnection, a: Identity, d: z.infer<typeof scheduleSchema>) {
+    await activeTargets(c, a, d.employeeId, d.storeId);
+    const snapshot = await this.snapshot(c, a, d.storeId, d.templateId);
+    const times = shiftInstants(
+      d.date,
+      d.startTime,
+      d.endTime,
+      d.crossesMidnight,
+      snapshot.timezone,
+    );
+    const id = randomUUID();
+    await c.query(
+      "insert into attendance.schedules(id,employee_id,store_id,template_id,starts_at,ends_at,created_by,rule_snapshot) values($1,$2,$3,$4,$5,$6,$7,$8)",
+      [
+        id,
+        d.employeeId,
+        d.storeId,
+        d.templateId,
+        times.startsAt,
+        times.endsAt,
+        a.id,
+        JSON.stringify(snapshot),
+      ],
+    );
+    const next = await read(c, a, id);
+    await audit(c, a, "schedule.create", "schedule", id, null, next);
+    return next;
+  }
   create(token: string, input: unknown) {
+    return this.auth.withOwner(token, (c, a) => this.insert(c, a, scheduleSchema.parse(input)));
+  }
+  createBatch(token: string, input: unknown) {
     return this.auth.withOwner(token, async (c, a) => {
-      const d = scheduleSchema.parse(input);
-      await activeTargets(c, a, d.employeeId, d.storeId);
-      const snapshot = await this.snapshot(c, a, d.storeId, d.templateId);
-      const times = shiftInstants(
-        d.date,
-        d.startTime,
-        d.endTime,
-        d.crossesMidnight,
-        snapshot.timezone,
-      );
-      const id = randomUUID();
-      await c.query(
-        "insert into attendance.schedules(id,employee_id,store_id,template_id,starts_at,ends_at,created_by,rule_snapshot) values($1,$2,$3,$4,$5,$6,$7,$8)",
-        [
-          id,
-          d.employeeId,
-          d.storeId,
-          d.templateId,
-          times.startsAt,
-          times.endsAt,
-          a.id,
-          JSON.stringify(snapshot),
-        ],
-      );
-      const next = await read(c, a, id);
-      await audit(c, a, "schedule.create", "schedule", id, null, next);
-      return next;
+      const { items, publish } = batchScheduleSchema.parse(input);
+      // Lock targets in a stable order before checking conflicts, including concurrent batches.
+      for (const employeeId of [...new Set(items.map(item => item.employeeId))].sort()) {
+        const found = await c.query("select id from attendance.employees where id=$1 and business_id=$2 and status='active' and role in ('employee','owner') for update", [employeeId, a.businessId]);
+        if (!found.rows.length) throw new AuthError('INVALID_ASSIGNMENT',400,'Pilih karyawan aktif dari usaha ini.');
+      }
+      const timezone = (await business(c, a.businessId)).timezone;
+      const created: ScheduledShift[] = [];
+      for (const item of items) {
+        const times = shiftInstants(item.date,item.startTime,item.endTime,item.crossesMidnight,timezone);
+        const overlap = await c.query("select id from attendance.schedules where employee_id=$1 and status in ('draft','published') and starts_at<$3 and ends_at>$2 limit 1", [item.employeeId,times.startsAt,times.endsAt]);
+        if (overlap.rows.length) throw new AuthError('SCHEDULE_OVERLAP',409,`Ada jadwal yang bertabrakan pada ${item.date}. Tidak ada jadwal baru disimpan. Ubah pilihan atau periksa jadwal yang sudah ada.`);
+        let next = await this.insert(c,a,item);
+        if (publish) {
+          await c.query("update attendance.schedules set status='published',published_at=now(),version=version+1 where id=$1",[next.id]);
+          const published = await read(c,a,next.id);
+          await audit(c,a,'schedule.published','schedule',next.id,next,published);
+          next = published;
+        }
+        created.push(next);
+      }
+      return { count: created.length, items: created };
     });
   }
   update(token: string, id: string, input: unknown) {
