@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type {
   Store,
   Employee,
@@ -65,6 +66,10 @@ function Field({
     </label>
   );
 }
+function EmployeePhoto({employee}:{employee:Employee}) {
+ const [failed,setFailed]=useState(false);
+ return <span className="employee-id-avatar">{failed?employee.full_name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase():<Image unoptimized src={'/api/v1/employees/'+employee.id+'/photo'} alt={'Foto '+employee.full_name} width={76} height={76} onError={()=>setFailed(true)}/>}</span>;
+}
 export function OwnerPanel({
   initialTab = "stores",
 }: {
@@ -80,6 +85,7 @@ export function OwnerPanel({
     [notice, setNotice] = useState(""),
     [refresh, setRefresh] = useState(0),
     [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<Employee | null>(null);
   const [editor, setEditor] = useState<{
       kind: "stores" | "employees";
       item?: Store | Employee;
@@ -162,6 +168,7 @@ export function OwnerPanel({
         joinedAt: form.get("joinedAt") || null,
       };
       if (form.get("code")) body.code = form.get("code");
+      if (!item && form.get("autoSchedule") === "on") body.initialSchedule = {startDate:form.get("scheduleStart"),days:form.getAll("workDay").map(Number)};
     }
     if (item) {
       const sensitive =
@@ -414,60 +421,15 @@ export function OwnerPanel({
             }}
           />
         ) : items.length ? (
-          <section className="panel">
-            {items.map((item) => (
-              <article key={item.id} className="owner-record">
-                <div>
-                  <h3>{"name" in item ? item.name : item.full_name}</h3>
-                  <p>{"code" in item ? item.code : item.employee_code}</p>
-                  <p>
-                    {"address" in item
-                      ? item.address
-                      : (stores.find((s) => s.id === item.primary_store_id)
-                          ?.name ?? "Belum ditugaskan ke toko")}
-                  </p>
-                  {"radius_m" in item ? (
-                    <small>
-                      Radius {item.radius_m} m ·{" "}
-                      {item.operating_hours || "Jam operasional belum diisi"}
-                    </small>
-                  ) : null}
-                </div>
-                <Badge>
-                  {(
-                    "is_active" in item
-                      ? item.is_active
-                      : item.status === "active"
-                  )
-                    ? "Aktif"
-                    : "Nonaktif"}
-                </Badge>
-                <div className="row-actions">
-                  <button
-                    disabled={busy}
-                    onClick={() => {
-                      setFormError(null);
-                      setEditor({ kind: tab as "stores" | "employees", item });
-                    }}
-                  >
-                    Edit
-                  </button>
-                  {"employee_code" in item ? (
-                    <button disabled={busy} onClick={() => reset(item)}>
-                      Reset PIN
-                    </button>
-                  ) : null}
-                  <button disabled={busy} onClick={() => toggle(item)}>
-                    {(
-                      "is_active" in item
-                        ? item.is_active
-                        : item.status === "active"
-                    )
-                      ? "Nonaktifkan"
-                      : "Aktifkan"}
-                  </button>
-                </div>
-              </article>
+          <section className={tab === "employees" ? "employee-id-grid" : "panel"}>
+            {items.map((item) => "employee_code" in item ? <button className="employee-id-card" key={item.id} onClick={()=>setDetail(item)}>
+              <span className="employee-id-top"><span>EMPLOYEE ID</span><span className={"employee-id-status "+item.status}>{item.status==='active'?'Aktif':'Nonaktif'}</span></span>
+              <EmployeePhoto employee={item}/>
+              <strong>{item.full_name}</strong><span className="employee-id-code">{item.employee_code}</span>
+              <span className="employee-id-store"><Icon name="store"/>{stores.find(store=>store.id===item.primary_store_id)?.name??'Belum ditugaskan'}</span>
+              <span className="employee-id-footer">Lihat detail <Icon name="arrow"/></span>
+            </button> : (
+              <article key={item.id} className="owner-record"><div><h3>{item.name}</h3><p>{item.code}</p><p>{item.address}</p><small>Radius {item.radius_m} m · {item.operating_hours || 'Jam operasional belum diisi'}</small></div><Badge>{item.is_active?'Aktif':'Nonaktif'}</Badge><div className="row-actions"><button disabled={busy} onClick={()=>{setFormError(null);setEditor({kind:'stores',item})}}>Edit</button><button disabled={busy} onClick={()=>void toggle(item)}>{item.is_active?'Nonaktifkan':'Aktifkan'}</button></div></article>
             ))}
             <div className="pagination">
               <button
@@ -501,6 +463,7 @@ export function OwnerPanel({
           </section>
         )}
       </main>
+      {detail ? <Modal title="Detail karyawan" onClose={()=>setDetail(null)}><section className="employee-detail"><EmployeePhoto key={detail.id+refresh} employee={detail}/><h3>{detail.full_name}</h3><label>Foto profil (JPEG, maksimal 512 KB)<input type="file" accept="image/jpeg" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setBusy(true);setError('');try{const response=await fetch('/api/v1/employees/'+detail.id+'/photo',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:file});if(!response.ok)throw new Error((await response.json()).error.message);reload();setNotice('Foto profil tersimpan.')}catch(err){setError(err instanceof Error?err.message:'Foto belum tersimpan.');setDetail(null)}finally{setBusy(false)}}}/></label><dl>{[['ID karyawan',detail.employee_code],['Toko',stores.find(store=>store.id===detail.primary_store_id)?.name??'Belum ditugaskan'],['Status',detail.status==='active'?'Aktif':'Nonaktif'],['Telepon',detail.phone??'Belum diisi'],['Bergabung',detail.joined_at?new Date(detail.joined_at).toLocaleDateString('id-ID'):'Belum diisi']].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>PIN lama tidak dapat dibaca. Reset PIN untuk mendapatkan PIN baru yang ditampilkan sekali.</p><div className="row-actions"><button onClick={()=>{setEditor({kind:'employees',item:detail});setDetail(null);setFormError(null)}}>Edit data</button><button disabled={busy} onClick={()=>{setDetail(null);void reset(detail)}}>Reset PIN</button><button disabled={busy} onClick={()=>{setDetail(null);void toggle(detail)}}>{detail.status==='active'?'Nonaktifkan':'Aktifkan'}</button></div><Link className="owner-inline-link" href="/owner/schedules">Kelola jadwal <Icon name="arrow"/></Link></section></Modal> : null}
       {editor ? (
         <Modal
           title={
@@ -575,7 +538,8 @@ export function OwnerPanel({
                 />
                 <Field
                   name="operatingHours"
-                  title="Jam operasional (informasi)"
+                  title="Jam operasional (HH:mm–HH:mm)"
+                  placeholder="08:00–16:00"
                   maxLength={120}
                   defaultValue={storeItem?.operating_hours ?? ""}
                 />
@@ -637,10 +601,13 @@ export function OwnerPanel({
                     </span>
                   ) : null}
                 </label>
+                {!employeeItem ? <fieldset className="employee-initial-schedule"><legend>Jadwal awal mengikuti toko</legend><label className="owner-check"><input type="checkbox" name="autoSchedule"/>Buat jadwal terbit untuk tujuh hari pertama</label><p>Jam toko harus berformat 08:00–16:00. Pilih tanggal mulai dan hari kerja di bawah.</p><Field title="Mulai jadwal" type="date" name="scheduleStart" defaultValue={new Intl.DateTimeFormat('en-CA',{timeZone:settings?.timezone??'Asia/Jakarta'}).format(new Date())}/><div className="employee-work-days">{['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map((day,i)=><label key={day}><input type="checkbox" name="workDay" value={i}/>{day}</label>)}</div></fieldset> : null}
                 <Field
                   name="phone"
                   title="Nomor telepon (opsional)"
                   type="tel"
+                  inputMode="tel"
+                  onInput={e=>{e.currentTarget.value=e.currentTarget.value.replace(/[^+0-9 ()-]/g,'')}}
                   maxLength={30}
                   defaultValue={employeeItem?.phone ?? ""}
                   issue={formError?.fields.phone}

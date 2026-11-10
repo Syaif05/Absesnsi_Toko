@@ -237,3 +237,11 @@ Menu karyawan disederhanakan mengikuti login baru dan referensi: EmployeeShell, 
 Rincian: [Revisi ruang owner](owner-menu-revision.md). Verifikasi backend/build dicatat setelah seluruh pemeriksaan selesai. Batas generator: 100 jadwal per operasi, pola hari eksplisit, tidak menebak rotasi atau cuti.
 
 Verifikasi revisi owner: `pnpm test:server` **142/142 lulus (11 file)**; `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm security:client`, dan `git diff --check` lulus. Tidak menjalankan browser, screenshot, atau tes UI. Tidak ada perubahan skema/ENV.
+
+## Kartu identitas karyawan — 10 November 2026
+
+Kartu karyawan menampilkan nama, ID, toko, status dan inisial (foto profil belum tersedia); klik membuka detail dan tindakan edit/reset/nonaktif. PIN lama tetap tidak dapat dibaca; PIN baru sekali tampil. Input telepon menyaring huruf di client dan tetap divalidasi server. Tampilan owner memenuhi lebar layar tanpa batas konten 1600px; ruang bawah desktop dikurangi.
+
+Pembuatan karyawan dapat sekaligus menerbitkan jadwal tujuh hari pertama dari jam toko berformat HH:mm–HH:mm dengan hari kerja pilihan owner. Kegagalan jadwal membatalkan akun beserta credential/audit dalam transaksi yang sama. Jadwal lanjutan dikelola lewat generator jadwal. Tidak ada migrasi. Foto profil dapat diunggah melalui detail (JPEG maksimal 512 KB), disanitasi dan disimpan privat; akses hanya owner dengan tautan singkat. Inisial menjadi fallback. Review UI tetap ditunda sesuai instruksi pengguna.
+
+Verifikasi: 143 tes backend lulus, lint/typecheck/build lulus; review UI ditunda. Foto profil menggunakan jalur deterministik business/employee/employee.jpg pada bucket privat yang sama, tanpa perubahan skema.

@@ -366,3 +366,13 @@ it("failed audit rolls the business mutation back atomically", async () => {
     );
   }
 });
+it('employee creation generates store-hour schedules atomically on selected weekdays',async()=>{
+ const store=await owner.createStore(token,{...storeInput('AUTO'),operatingHours:'20:00–05:00'});
+ const result=await owner.createEmployee(token,{fullName:'Auto employee',storeId:store.id,initialSchedule:{startDate:'2027-01-04',days:[1,3,5]}});
+ const rows=await pg.query<{status:string;starts_at:string;ends_at:string}>("select status,starts_at,ends_at from attendance.schedules where employee_id=$1",[result.employee.id]);
+ expect(rows.rows).toHaveLength(3);expect(rows.rows.every(r=>r.status==='published')).toBe(true);
+ expect(Date.parse(rows.rows[0].ends_at)-Date.parse(rows.rows[0].starts_at)).toBe(9*3600000);
+ await expect(owner.createEmployee(token,{fullName:'Rollback employee',code:'ROLLBACKAUTO',storeId:first.id,initialSchedule:{startDate:'2027-01-04',days:[1]}})).rejects.toMatchObject({code:'INVALID_STORE_HOURS'});
+ expect((await pg.query("select id from attendance.employees where employee_code='ROLLBACKAUTO'")).rows).toHaveLength(0);
+ await expect(owner.createEmployee(token,{fullName:'Bad phone',phone:'08abcdef'})).rejects.toThrow();
+});

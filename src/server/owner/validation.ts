@@ -40,6 +40,7 @@ const employeeFields = z
   .strict();
 export const createEmployeeSchema = employeeFields.extend({
   code: loginCode.optional(),
+  initialSchedule: z.object({startDate:z.iso.date(),days:z.array(z.number().int().min(0).max(6)).min(1).max(7)}).strict().optional(),
   storeId: z.uuid().nullable().default(null),
   status: z.enum(["active", "inactive"]).default("active"),
   phone: z

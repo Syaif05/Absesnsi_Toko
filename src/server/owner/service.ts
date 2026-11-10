@@ -1,3 +1,4 @@
+import { shiftInstants } from "../schedules/time";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { AuthError, type SqlConnection, type Identity } from "../auth/types";
@@ -240,6 +241,22 @@ export class OwnerService {
       );
       await assignment(c, id, d.storeId);
       await audit(c, a, "employee.create", "employee", id, null, row);
+      if (d.initialSchedule) {
+        if (!d.storeId || d.status !== 'active') throw new AuthError('INVALID_SCHEDULE',400,'Jadwal awal memerlukan toko dan karyawan aktif.');
+        const store=(await c.query<Store>(`select ${storeColumns} from attendance.stores where id=$1 and business_id=$2`,[d.storeId,a.businessId])).rows[0];
+        const hours=store.operating_hours.match(/^([0-2]\d:[0-5]\d)\s*[-–—]\s*([0-2]\d:[0-5]\d)$/);
+        if (!hours || Number(hours[1].slice(0,2))>23 || Number(hours[2].slice(0,2))>23) throw new AuthError('INVALID_STORE_HOURS',400,'Isi jam operasional toko dengan format HH:mm–HH:mm sebelum membuat jadwal otomatis.');
+        const timezone=(await c.query<{timezone:string}>('select timezone from attendance.businesses where id=$1',[a.businessId])).rows[0].timezone;
+        const rules=(await c.query<{value_json:Record<string,number>}>("select value_json from attendance.business_settings where business_id=$1 and key='attendance_rules'",[a.businessId])).rows[0]?.value_json??{};
+        for(let i=0;i<7;i++) {
+          const day=new Date(d.initialSchedule.startDate+'T12:00Z');day.setUTCDate(day.getUTCDate()+i);
+          if(!d.initialSchedule.days.includes(day.getUTCDay())) continue;
+          const times=shiftInstants(day.toISOString().slice(0,10),hours[1],hours[2],hours[2]<=hours[1],timezone),scheduleId=randomUUID();
+          const snapshot={timezone,grace_minutes:rules.graceMinutes??5,accuracy_m:rules.accuracyM??100,radius_m:store.radius_m,store_lat:store.lat,store_lng:store.lng,rules_version:rules.version??0,template:null};
+          await c.query("insert into attendance.schedules(id,employee_id,store_id,starts_at,ends_at,status,published_at,created_by,rule_snapshot) values($1,$2,$3,$4,$5,'published',now(),$6,$7)",[scheduleId,id,d.storeId,times.startsAt,times.endsAt,a.id,JSON.stringify(snapshot)]);
+          await audit(c,a,'schedule.create','schedule',scheduleId,null,{employeeId:id,storeId:d.storeId,...times,status:'published'});
+        }
+      }
       return { employee: row, temporaryPin: pin };
     });
   }
