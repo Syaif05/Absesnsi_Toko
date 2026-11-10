@@ -2,6 +2,7 @@
 import { useEffect,useRef,useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import {EmployeeShell} from './employee-shell';
 import { Modal } from './ui';
 import { localParts } from '@/lib/schedule-dates';
 import type { ApprovalDetail,ApprovalSummary,ApprovalStatus,CorrectionTarget,CorrectionField } from '@/server/approvals/models';
@@ -32,7 +33,7 @@ export function ApprovalsPanel({inbox}:{inbox:boolean}){
   try{const data=await request<ApprovalDetail>('approvals/'+id);if(version===detailVersion.current)setDetail(data)}catch(err){if(version===detailVersion.current)setError(err instanceof Error?err.message:'Detail belum tersedia.')}finally{if(version===detailVersion.current)setDetailBusy(false)}
  }
  function close(){if(busy)return;detailVersion.current++;setDetail(null);setPhoto(null);setDecision(null);setDetailBusy(false)}
- return <main className="employee-schedules approvals-page">
+ return <EmployeeShell enabled={!inbox} title="Koreksi absensi" subtitle="Pengajuan dan keputusan owner."><main className="employee-schedules approvals-page">
   <header className="page-heading"><div><span className="eyebrow">PRINCES ATTENDANCE</span><h1>{inbox?'Kotak masuk persetujuan':'Koreksi & persetujuan saya'}</h1><p>{inbox?'Tinjau bukti asli sebelum mengambil keputusan.':'Waktu resmi berubah setelah owner menyetujui koreksi.'}</p></div><nav><Link href={inbox?'/owner':'/attendance'}>{inbox?'Pengelolaan usaha':'Absensi'}</Link> · <Link href={inbox?'/my-approvals':'/account'}>{inbox?'Pengajuan saya':'Akun'}</Link></nav></header>
   {error?<p className="auth-error" role="alert">{error}</p>:null}{notice?<p className="auth-notice" role="status">{notice}</p>:null}
   {!inbox?<button className="primary" onClick={()=>{setCreating(true);setError('');setNotice('')}}>Ajukan koreksi waktu</button>:null}
@@ -54,7 +55,7 @@ export function ApprovalsPanel({inbox}:{inbox:boolean}){
    }}><h3>Konfirmasi {decision==='approved'?'persetujuan':'penolakan'}</h3><p>Keputusan bersifat final. Periksa bukti dan perubahan waktu di atas.</p><label>Catatan keputusan<textarea required minLength={3} maxLength={1000} value={note} disabled={busy} onChange={e=>setNote(e.target.value)}/></label><label className="approval-checkbox"><input type="checkbox" required disabled={busy}/> Saya sudah memeriksa permintaan dan bukti.</label><button className="primary" disabled={busy}>{busy?'Menyimpan…':'Konfirmasi keputusan'}</button><button type="button" disabled={busy} onClick={()=>setDecision(null)}>Batal</button></form>:null}
   </div></Modal>:null}
   {creating?<CorrectionForm onClose={()=>setCreating(false)} onSaved={saved=>{setCreating(false);setNotice(saved.status==='pending'?'Pengajuan koreksi tercatat dan menunggu persetujuan.':'Pengajuan ini sudah '+statusText[saved.status].toLowerCase()+'.');setRevision(v=>v+1);setDetail(saved)}}/>:null}
- </main>;
+ </main></EmployeeShell>;
 }
 function CorrectionForm({onClose,onSaved}:{onClose:()=>void;onSaved:(value:ApprovalDetail)=>void}){
  const [targets,setTargets]=useState<CorrectionTarget[]>([]),[offset,setOffset]=useState(0),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[selected,setSelected]=useState(''),[changeIn,setChangeIn]=useState(false),[changeOut,setChangeOut]=useState(false),[checkIn,setCheckIn]=useState(''),[checkOut,setCheckOut]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[frozen,setFrozen]=useState(false),[retry,setRetry]=useState(0);

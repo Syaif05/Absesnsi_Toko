@@ -218,3 +218,9 @@ Instruksi pengguna 10 November 2026: gunakan referensi login baru yang minimal u
 Login kini memakai form flat satu kolom, pemilih akun pill, tombol hitam, input besar, tombol lihat/sembunyikan dan feedback dialog native dengan reduced motion. Sukses menuju dashboard owner/absensi karyawan melalui Lanjutkan. Form perubahan credential tertutup/opsional di Akun. Server menggunakan pinChangeSuggested informasional, tanpa guard/redirect wajib PIN; initial/reset PIN dapat mengakses sumber daya sendiri. Tidak ada migrasi atau penggantian credential. Account/role/status/business/revocation/CSRF/rate limit tetap diuji.
 
 136 tes backend/11 file lulus; build lulus. Typecheck/lint/scanner browser diperiksa sebelum checkpoint. UI/UX/DOM/screenshot/perangkat **tetap tidak diuji** sesuai penundaan. Perubahan/file inti dan batas verifikasi ada pada docs/login-revision.md. Tidak memulai fitur lain atau Fase 11.
+
+### Revisi bertahap — menu karyawan
+
+Menu karyawan disederhanakan mengikuti login baru dan referensi: EmployeeShell, navigasi bawah Absensi/Jadwal/Riwayat/Pengaturan, kartu putih, latar terang, CTA kamera biru serta tombol hitam. Aksi masuk/pulang ditentukan sesi server, bukan toggle bebas. Riwayat memiliki route /my-history yang tetap dijaga auth, foto privat dan pagination. Jadwal, koreksi employee dan akun memakai shell konsisten; layout owner tetap. Tidak mengubah DB, credential, aturan GPS/selfie/idempotency atau menambah data contoh.
+
+136 tes backend/11 file, lint dan build lulus; typecheck/scanner browser diperiksa sebelum commit. Tidak menjalankan tes UI/UX/DOM/viewport/perangkat sesuai instruksi pengguna. Detail komponen, URL, state dan batas verifikasi di docs/employee-menu-revision.md.

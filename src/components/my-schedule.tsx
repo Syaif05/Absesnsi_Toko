@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import {EmployeeShell} from "./employee-shell";
 import type { ScheduledShift } from "@/server/schedules/models";
 import type { Page } from "@/server/owner/models";
 import { dayAfter, mondayOf, localParts } from "@/lib/schedule-dates";
@@ -50,15 +50,7 @@ export function MySchedule({ initialDate }: { initialDate: string }) {
     };
   }, [week, offset, retry]);
   return (
-    <main className="employee-schedules">
-      <header className="page-heading">
-        <div>
-          <span className="eyebrow">PRINCES ATTENDANCE</span>
-          <h1>Jadwal saya</h1>
-          <p>Hanya jadwal yang sudah diterbitkan owner.</p>
-        </div>
-        <nav><Link href="/attendance">Absensi</Link> · <Link href="/account">Akun</Link></nav>
-      </header>
+    <EmployeeShell title="Jadwal saya" subtitle="Atur hari Anda, lihat jadwal yang sudah terbit."><main className="employee-schedules employee-schedule-page">
       <div className="schedule-week-controls">
         <button
           aria-label="Minggu sebelumnya"
@@ -110,7 +102,7 @@ export function MySchedule({ initialDate }: { initialDate: string }) {
             return (
               <article className="owner-record" key={r.id}>
                 <div>
-                  <h2>{start.date}</h2>
+                  <h2>{new Intl.DateTimeFormat("id-ID",{weekday:"long",day:"numeric",month:"short",timeZone:"UTC"}).format(new Date(start.date+"T12:00:00Z"))}</h2>
                   <p>{r.store_name}</p>
                   <strong>
                     {start.time}–{end.time}
@@ -144,6 +136,6 @@ export function MySchedule({ initialDate }: { initialDate: string }) {
           Berikutnya
         </button>
       </div>
-    </main>
+    </main></EmployeeShell>
   );
 }
