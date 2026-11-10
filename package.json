@@ -16,7 +16,11 @@
     "test": "vitest run",
     "owner:bootstrap": "tsx scripts/bootstrap-owner.mts",
     "db:export:supabase": "node scripts/export-supabase.mjs",
-    "qa:owner": "tsx scripts/preview-owner.mts"
+    "qa:owner": "tsx scripts/preview-owner.mts",
+    "test:server": "vitest run tests/integration",
+    "storage:setup": "tsx scripts/storage-setup.mts",
+    "storage:reconcile": "tsx scripts/storage-reconcile.mts",
+    "storage:check": "tsx scripts/check-storage.mts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -26,6 +30,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "sharp": "0.35.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

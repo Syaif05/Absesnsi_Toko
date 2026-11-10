@@ -37,3 +37,19 @@ POST jadwal: `{employeeId,storeId,templateId:null|UUID,date,startTime,endTime,cr
 PATCH status: `{status:"published"|"cancelled",version,confirmed:true,confirmWithAttendance?:true}`. Transisi `draft → published/cancelled` dan `published → cancelled`; cancelled final. Konflik jadwal/versi/status adalah 409. Tidak ada endpoint hapus permanen.
 
 GET schedules memerlukan `from` dan `to` (tanggal akhir eksklusif, 1–31 hari); opsional employeeId/storeId/status/offset. Query menyertakan shift dari hari sebelumnya yang masih melintasi awal rentang. Pagination `{items,hasMore,nextOffset,timezone}` maksimal 50 baris; template/people juga pagination 50. GET me/schedules hanya menerima from/to/offset; identitas tidak boleh ditentukan client. Response waktu selalu ISO UTC dan menyertakan snapshot interpretasi jadwal.
+
+## API Fase 6 — Absensi
+
+| Method | Endpoint | Isi |
+|---|---|---|
+| GET | `/api/v1/me/attendance/context` | Jadwal aktif, sesi terbuka, snapshot aturan, missingCheckout, waktu server, timezone |
+| GET | `/api/v1/me/attendance?offset=0` | Pengiriman sendiri, 20 event, hasMore/nextOffset |
+| POST | `/api/v1/attendance/check-in` | Multipart selfie + metadata, sesi diambil dari cookie |
+| POST | `/api/v1/attendance/check-out` | Multipart, jadwal sesi sendiri yang masih terbuka |
+| GET | `/api/v1/attendance/:eventId/photo` | Signed URL 60 detik; employee sendiri / owner satu usaha |
+
+POST memerlukan Origin sama dengan APP_BASE_URL; **multipart/form-data**, bukan JSON seperti CRUD owner. Tepat satu field photo JPEG ≤512 KB dan satu field metadata JSON ≤4096 karakter. Metadata `{idempotencyKey:UUID,scheduleId:UUID,location,reason:""}`. Location `{status:"available",lat,lng,accuracyM}` atau `{status:"denied"|"unavailable"}`. Exception perlu alasan minimal 5 karakter. Response `{id,sessionId,eventType,recordedAt,locationStatus,reviewStatus,late}` di dalam data. Waktu resmi ISO UTC dari PostgreSQL; pending belum disetujui.
+
+Tidak ada employeeId/time/radius yang dapat ditentukan client. Retry memakai foto + metadata + key persis sama. Kunci yang sama dengan payload berbeda: 409 IDEMPOTENCY_CONFLICT; retry yang sudah commit mengembalikan event lama. Batas 20 kunci baru/jam/employee, error 429. Error format/foto/alasan 400, body >528 KiB 413, sesi/jadwal/expired/conflict 409, infrastruktur 503. Kegagalan jaringan/503 belum mengonfirmasi pengiriman; gunakan retry identik atau periksa riwayat. Semua response no-store, tanpa path foto/secret pada daftar.
+
+Detail recovery, transaction dan signed URL di `docs/attendance.md`. Endpoint keputusan approval/koreksi belum tersedia.

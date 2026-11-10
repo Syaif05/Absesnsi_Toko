@@ -1,6 +1,6 @@
 # PRINCES Attendance
 
-Fondasi Fase 0 untuk aplikasi kehadiran Princes. Halaman yang berjalan sekarang hanya menunjukkan status setup. Login, dashboard, dan absensi belum diimplementasikan.
+Aplikasi kehadiran Princes dengan implementasi Fase 0–6: autentikasi, pengelolaan owner, jadwal dan absensi selfie/GPS. Halaman `/` tetap prototipe DEMO; alur data nyata dimulai dari `/login`. Koneksi database cloud dan penerimaan perangkat masih memiliki batas yang dicatat di checkpoint.
 
 ## Menjalankan lokal
 
@@ -42,7 +42,7 @@ Skema dan migrasi PostgreSQL sudah tersedia. Jalankan `pnpm test` untuk pengujia
 
 Halaman akun tersedia di `/login` dan `/account`. Tanpa database yang dikonfigurasi, login menampilkan layanan belum tersedia. Petunjuk bootstrap owner, konfigurasi dan batas pengujian ada di [docs/authentication.md](docs/authentication.md).
 
-Semua SQL database sampai Fase 5 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
+Semua SQL database sampai Fase 6 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
 
 ## Administrasi owner Fase 4
 
@@ -55,3 +55,9 @@ Untuk review tanpa cloud, gunakan preview PostgreSQL tes sementara: `RUN_ISOLATE
 Owner: `/owner/schedules`; karyawan: `/my-schedule`. Template, draft/publish/cancel, lintas toko, shift malam dan audit sudah terhubung ke API. Panduan [docs/scheduling.md](docs/scheduling.md) memuat kontrak, cara review, hasil tes dan batas koneksi.
 
 Dalam preview `pnpm qa:owner`, buka `http://127.0.0.1:3002/owner-preview?view=schedules` untuk fixture owner atau `http://127.0.0.1:3002/owner-preview?view=mine` untuk jadwal karyawan. Database tetap sementara dan terisolasi.
+
+## Absensi Fase 6
+
+Karyawan: `/attendance` (tautan dari akun/jadwal). Kamera langsung, preview/retake, GPS, check-in/out, pengecualian pending dan riwayat pengiriman sudah memakai API. Foto privat dengan akses terotorisasi. [Panduan absensi](docs/attendance.md) menjelaskan setup, retry, cleanup dan batas verifikasi.
+
+Jalankan `pnpm db:migrate`, `pnpm storage:setup`, lalu `pnpm dev`. `pnpm test:server` hanya menjalankan tes backend; pengujian UI/UX Fase 6 ditunda atas instruksi pengguna. Bucket privat cloud sudah disiapkan; migrasi 0006 masih perlu diterapkan setelah koneksi PostgreSQL dapat dijangkau. `pnpm storage:check` memverifikasi Storage memakai objek sintetis yang langsung dihapus. GitHub tidak dipush.

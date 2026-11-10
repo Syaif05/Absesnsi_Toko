@@ -100,3 +100,24 @@ Runtime website belum terhubung: DATABASE_URL yang dimasukkan masih URL API HTTP
 - [x] Browser HP berhasil tambah draft, publish, reload, cancel dan edit template. Screenshot karyawan/owner/template lima viewport; editor tiga HP; tanpa overflow.
 
 Risiko/batas: native PostgreSQL concurrency multi-koneksi dan perangkat fisik belum diuji. Runtime lokal menuju direct hostname Supabase gagal DNS walaupun URI kini PostgreSQL dan project cocok; plugin dapat mengakses cloud. Owner operasional belum dibootstrap karena credential bootstrap kosong. Tidak ada push GitHub, data demo cloud, atau fitur Fase 6. Panduan dan file utama di `docs/scheduling.md`.
+
+## Fase 6 — Selfie & GPS (10 November 2026)
+
+Implementasi selesai untuk pemeriksaan kode/backend. Checkpoint penerimaan browser/perangkat sengaja ditunda sesuai instruksi pengguna agar tidak melakukan pengujian UI/UX. Tidak melanjutkan Fase 7.
+
+- [x] `/attendance`: kamera langsung, permission/error, preview/retake, kompresi JPEG, GPS/akurasi/retry, alasan pengecualian, hasil tercatat/pending dan riwayat sendiri.
+- [x] API check-in/out, waktu PostgreSQL, Haversine/snapshot toko jadwal, toleransi terlambat, checkout saat check-in pending, missingCheckout tanpa waktu otomatis.
+- [x] Validasi MIME/signature/dimensi/decode/ukuran dan re-encode EXIF, metadata strict, CSRF, sesi aktif/ownership/business dan rate limit.
+- [x] Jurnal durable dua transaksi, idempotency/hash payload, lock anti-duplikasi, cleanup orphan setelah 24 jam, event/sesi/approval/audit atomik.
+- [x] StorageProvider + adapter Supabase privat, foto hanya signed URL 60 detik lewat otorisasi server.
+- [x] Migrasi 0006 dan SQL gabungan untuk database kosong: 18 tabel RLS, unique sesi per jadwal dan indeks riwayat/rate limit/cleanup. SQL bucket opsional terpisah.
+- [x] Bucket attendance-photos cloud dibuat privat dengan JPEG saja dan batas 512 KiB. Verifikasi nyata memakai gambar sintetis: upload berhasil, signed URL berhasil dibaca, akses public ditolak, objek uji langsung dihapus. Tidak membuat akun, jadwal, data demo absensi atau foto orang di cloud.
+- [x] `pnpm test:server`: **66 tes backend lulus** (5 file). `pnpm lint`, `pnpm typecheck`, `pnpm build` lulus. Tidak menjalankan `pnpm test` karena mencakup tests/ui.
+- [ ] Migrasi 0006 cloud: belum diterapkan. Plugin Supabase gagal transport; direct PostgreSQL URI gagal DNS ENOTFOUND. Cloud terakhir terverifikasi sampai 0005. Bucket Storage dapat diakses terpisah melalui API.
+- [ ] Browser/mobile/perangkat nyata, screenshot, UI DOM dan UI/UX: sengaja tidak diuji atas instruksi pengguna. Native PostgreSQL multikoneksi juga belum diuji.
+
+File utama: src/components/attendance-panel.tsx, src/app/attendance/page.tsx, src/app/api/v1/attendance dan me/attendance, src/server/attendance, src/server/storage, drizzle/0006_attendance_uploads.sql, supabase/sql, scripts storage setup/check/reconcile, tests/integration/attendance.test.ts, dan docs/attendance.md. Navigasi akun/jadwal dan CSS diperbarui; sharp dipasang langsung dan lockfile diperbarui.
+
+Cara menjalankan setelah DATABASE_URL dapat dijangkau: `pnpm db:migrate`, `pnpm storage:setup`, `pnpm dev`, login akun yang sah lalu buka `/attendance`. Owner operasional masih perlu bootstrap dengan kredensial pemilik; lakukan konfigurasi toko/karyawan/publish jadwal melalui owner. `pnpm storage:reconcile` dijalankan operator harian untuk upload gagal; bukan penghapusan bukti sah. Panduan penuh di docs/attendance.md.
+
+Batas: retensi/penghapusan otomatis bukti sah belum dioperasionalkan, harus disepakati sebelum pilot. Kamera/GPS bukan verifikasi biometrik/anti-spoof. Upload menahan lock transaksi dengan timeout Storage terbatas; pemisahan lewat lease dapat dievaluasi ketika beban meningkat. GitHub tidak dipush; keputusan approval/koreksi tetap fase berikutnya.

@@ -57,7 +57,7 @@ export function MySchedule({ initialDate }: { initialDate: string }) {
           <h1>Jadwal saya</h1>
           <p>Hanya jadwal yang sudah diterbitkan owner.</p>
         </div>
-        <Link href="/account">Kembali ke akun</Link>
+        <nav><Link href="/attendance">Absensi</Link> · <Link href="/account">Akun</Link></nav>
       </header>
       <div className="schedule-week-controls">
         <button

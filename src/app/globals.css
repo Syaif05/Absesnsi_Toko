@@ -10,3 +10,17 @@ input,textarea{font-size:16px}.demo-strip select{min-height:44px}.record-main st
 .owner-tabs .active,.owner-live button.primary{color:var(--accent-text,#17212e)}.owner-live label{font-size:14px}.owner-content h2{line-height:1.4}
 @media(max-width:599px){.owner-tabs button{flex-direction:column;gap:6px;white-space:nowrap;min-width:0}.owner-account{flex-shrink:0;max-width:90px}}
 .owner-tabs>a{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;padding:10px 6px;border:1px solid var(--border);border-radius:10px;min-height:44px;font-size:12px}.schedule-week-controls{display:flex;align-items:end;gap:12px;margin:20px 0}.schedule-week-controls label{flex:1;min-width:0}.schedule-week-controls button{flex:none}.schedule-days{display:grid;gap:16px}.schedule-days>.panel{margin:0;padding:18px}.schedule-days h2{font-size:16px;margin-bottom:18px}.scheduled-card{border-top:1px solid var(--border);padding:18px 0}.scheduled-card .section-title{gap:8px;margin-bottom:10px}.scheduled-card strong{font-size:14px}.scheduled-card p{font-size:13px}.scheduled-card small{display:block;margin-top:8px}.scheduled-card .row-actions{margin-top:16px}.scheduled-time{font-weight:600;color:var(--text-primary);margin-top:8px}.schedule-status{display:inline-flex;padding:6px 8px;border-radius:6px;background:#f0f2f6;font-size:11px;line-height:1.4}.schedule-status.published{background:#edf7f2;color:#286b50}.schedule-status.draft{background:#edf0ff;color:#4f60a0}.schedule-status.cancelled{background:#fff0f0;color:#9a4a50}.day-empty{font-size:13px}.checkbox-field{display:flex;align-items:center;gap:12px;line-height:1.6}.checkbox-field input{width:24px;min-width:24px;min-height:24px;flex:none}.checkbox-field{min-height:44px;padding:8px 0}.employee-schedules{max-width:760px;padding:28px 16px}.employee-schedules a{min-height:44px;display:inline-flex;align-items:center}.schedule-days .row-actions button{font-size:12px;padding:10px 8px;flex:1}.schedule-days .row-actions{width:100%;display:flex;flex-wrap:wrap;gap:8px}@media(max-width:599px){.owner-tabs>a{flex-direction:column;white-space:nowrap;font-size:11px;padding:10px 2px}.owner-tabs button{font-size:11px;padding:10px 2px}}@media(min-width:768px){.schedule-days{grid-template-columns:repeat(2,minmax(0,1fr))}.owner-tabs>a{flex:none;padding:12px 24px}}@media(min-width:1200px){.schedule-days{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Phase 6: one-column camera flow, no gallery input. */
+.attendance-page { max-width: 760px; margin-inline: auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.attendance-page .panel { margin-block: 20px; padding: 20px; }
+.attendance-capture { display: grid; gap: 14px; }
+.attendance-capture video, .attendance-capture img { width: 100%; max-height: 460px; object-fit: contain; border-radius: 12px; background: #1d2430; }
+.selfie-camera { transform: scaleX(-1); }
+.attendance-capture figure { margin: 0; }
+.attendance-capture label, .gps-status { display: grid; gap: 10px; }
+.attendance-capture textarea { min-height: 100px; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font: inherit; }
+.attendance-page button, .attendance-page nav a { min-height: 44px; }
+.attendance-history { padding: 0; list-style: none; }
+.attendance-history li { display: grid; gap: 6px; padding-block: 16px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.attendance-page nav a { display: inline-flex; align-items: center; }

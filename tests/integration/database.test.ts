@@ -14,9 +14,9 @@ beforeAll(async()=>{
  await pg.exec(seedSql);
 },30000);
 afterAll(()=>pg.close());
-it('migrates empty PostgreSQL and creates all 17 protected tables',async()=>{
+it('migrates empty PostgreSQL and creates all 18 protected tables',async()=>{
  const result=await pg.query<{count:number}>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='attendance' and c.relkind='r' and c.relrowsecurity");
- expect(result.rows[0].count).toBe(17);
+ expect(result.rows[0].count).toBe(18);
 });
 it('seed is idempotent and creates no credentials',async()=>{
  await pg.exec(seedSql);expect(await repo.listEmployees(demoBusinessId)).toHaveLength(9);expect(await repo.listStores(demoBusinessId)).toHaveLength(2);

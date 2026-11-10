@@ -314,6 +314,36 @@ CREATE INDEX template_business_idx ON attendance.shift_templates(business_id);
 --> statement-breakpoint
 ALTER TABLE attendance.shift_templates ADD CONSTRAINT valid_template_times CHECK (start_local_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND end_local_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND ((crosses_midnight AND end_local_time<=start_local_time) OR (NOT crosses_midnight AND end_local_time>start_local_time)));
 
+-- SOURCE: drizzle/0006_attendance_uploads.sql
+CREATE TABLE "attendance"."attendance_uploads" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"employee_id" uuid NOT NULL,
+	"idempotency_key" uuid NOT NULL,
+	"payload_hash" text NOT NULL,
+	"photo_path" text NOT NULL,
+	"state" text DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	CONSTRAINT "attendance_uploads_employee_id_idempotency_key_unique" UNIQUE("employee_id","idempotency_key"),
+	CONSTRAINT "valid_upload_state" CHECK ("attendance"."attendance_uploads"."state" in ('pending','completed','removed'))
+);
+--> statement-breakpoint
+ALTER TABLE "attendance"."attendance_uploads" ADD CONSTRAINT "attendance_uploads_employee_id_employees_id_fk" FOREIGN KEY ("employee_id") REFERENCES "attendance"."employees"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "attendance_uploads_state_expires_at_index" ON "attendance"."attendance_uploads" USING btree ("state","expires_at");--> statement-breakpoint
+CREATE INDEX "attendance_uploads_employee_id_created_at_index" ON "attendance"."attendance_uploads" USING btree ("employee_id","created_at");--> statement-breakpoint
+CREATE INDEX "attendance_events_employee_id_recorded_at_id_index" ON "attendance"."attendance_events" USING btree ("employee_id","recorded_at","id");--> statement-breakpoint
+CREATE INDEX "attendance_events_photo_path_index" ON "attendance"."attendance_events" USING btree ("photo_path");
+--> statement-breakpoint
+ALTER TABLE attendance.attendance_uploads ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON attendance.attendance_uploads FROM PUBLIC;
+DO $$ BEGIN
+ IF EXISTS (SELECT FROM pg_roles WHERE rolname='anon') THEN REVOKE ALL ON attendance.attendance_uploads FROM anon; END IF;
+ IF EXISTS (SELECT FROM pg_roles WHERE rolname='authenticated') THEN REVOKE ALL ON attendance.attendance_uploads FROM authenticated; END IF;
+END $$;
+--> statement-breakpoint
+-- A published schedule can have only one work session; correction preserves originals.
+CREATE UNIQUE INDEX one_session_per_schedule ON attendance.attendance_sessions(schedule_id) WHERE schedule_id IS NOT NULL;
+
 CREATE SCHEMA IF NOT EXISTS drizzle;
 CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
@@ -322,4 +352,5 @@ INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('da7df019bfc16
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('2edf7758c94f03a0b1970eb9e6393d714be6b54044f4dec512a17293e8c63e94',1794225072928);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('dfe99584630bb66351f727c8a5d0e46b0d1bc7dca3873234100397c9ee6f0411',1794227850191);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('d89c81281cde4d53adeb73327bc7ef1d232eb640928c79b818e199dcbe17248b',1794228837931);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('fa39cfaa1e4a86599a202f3000764ed9b247d886722c11ba536d4edf02c2e118',1794273586916);
 COMMIT;

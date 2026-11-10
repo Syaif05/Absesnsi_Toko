@@ -94,7 +94,7 @@ it('Supabase SQL bundle installs on an empty PostgreSQL without demo accounts',a
   await fresh.exec(readFileSync('supabase/sql/001_schema_all.sql','utf8'));
   expect((await fresh.query('select * from attendance.employees')).rows).toHaveLength(0);
   expect((await fresh.query('select * from attendance.bootstrap_state')).rows).toHaveLength(0);
-  const tables=await fresh.query<{count:number}>("select count(*)::int as count from pg_tables where schemaname='attendance'");expect(tables.rows[0].count).toBe(17);
+  const tables=await fresh.query<{count:number}>("select count(*)::int as count from pg_tables where schemaname='attendance'");expect(tables.rows[0].count).toBe(18);
  }finally{await fresh.close()}
 });
 
