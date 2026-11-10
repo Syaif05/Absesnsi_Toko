@@ -162,14 +162,14 @@ it('authorizes photo access for self and same-business owner only; history has n
  expect((await service.own(other.token,{})).items).toHaveLength(0);
  const own=await service.own(f.token,{});expect(own.items).toHaveLength(1);expect(JSON.stringify(own)).not.toContain('photo_path');
 });
-it('revoked, inactive and temporary-PIN sessions cannot submit or read photos',async()=>{
+it('revoked/inactive sessions are denied; initial PIN can submit own attendance',async()=>{
  const f=await fixture(),saved=await submit(f);
  await pg.query<Record<string,unknown>>('UPDATE attendance.auth_sessions SET revoked_at=now() WHERE employee_id=$1',[f.id]);
  await expect(submit(f)).rejects.toMatchObject({status:401});await expect(service.photo(f.token,saved.id)).rejects.toMatchObject({status:401});
  const inactive=await fixture();await pg.query<Record<string,unknown>>("UPDATE attendance.employees SET status='inactive' WHERE id=$1",[inactive.id]);
  await expect(service.context(inactive.token)).rejects.toMatchObject({status:401});
  const temporary=await fixture();await pg.query<Record<string,unknown>>("INSERT INTO attendance.employee_credentials(employee_id,pin_hash,must_change_pin) VALUES($1,'fixture-not-a-login-hash',true)",[temporary.id]);
- await expect(submit(temporary)).rejects.toMatchObject({code:'PIN_CHANGE_REQUIRED'});
+ expect((await submit(temporary)).sessionId).toBeTruthy();
 });
 it('rejects spoofed time/identity, invalid GPS, fake MIME/JPEG, excessive size and strips metadata',async()=>{
  const f=await fixture();

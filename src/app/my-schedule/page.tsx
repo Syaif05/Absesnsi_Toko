@@ -14,7 +14,7 @@ export default async function MySchedulePage() {
     timezone = await new ScheduleService(authRuntime().service).timezone(token);
   } catch (error) {
     if (error instanceof AuthError)
-      redirect(error.code === "PIN_CHANGE_REQUIRED" ? "/account" : "/login");
+      redirect("/login");
     return (
       <main className="auth-page">
         <section className="panel">

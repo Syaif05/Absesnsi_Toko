@@ -26,12 +26,12 @@ export function createAuthHandler(getRuntime:()=>{service:AuthService;origin:str
    const {service,origin}=runtime;const token=request.cookies.get(cookieName)?.value??'';
    let response:NextResponse;
    if(request.method==='GET'&&action==='me'){
-    response=NextResponse.json({data:await service.me(token,true)});
+    response=NextResponse.json({data:await service.me(token)});
    }else{
     assertSameOrigin(request,origin);const body=await readBody(request);
     if(action==='employee-login'||action==='owner-login'){
      const data=input.parse(body);const result=await service.login(action==='owner-login'?'owner':'employee',data.code,data.credential);
-     response=NextResponse.json({data:{mustChangePin:result.mustChangePin}});
+     response=NextResponse.json({data:{pinChangeSuggested:result.pinChangeSuggested}});
      response.cookies.set(cookieName,result.token,{...cookieOptions,maxAge:SESSION_SECONDS});
     }else if(action==='logout'){
      await service.logout(token);response=NextResponse.json({data:{success:true}});response.cookies.set(cookieName,'',{...cookieOptions,maxAge:0});

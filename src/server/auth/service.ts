@@ -41,16 +41,16 @@ export class AuthService {
    const token=newToken();
    await c.query("insert into attendance.auth_sessions(employee_id,token_hash,expires_at) values($1,$2,now()+interval '7 days')",[row.id,tokenHash(token)]);
    await this.audit(c,row.id,'auth.login',row.id);
-   return {token,mustChangePin:!!row.must_change_pin};
+   // Legacy DB flag is informational; initial/reset PIN never limits resource access.
+   return {token,pinChangeSuggested:!!row.must_change_pin};
   });
   if('error' in result)throw result.error;
   return result;
  }
- private async identity(c:SqlConnection,token:string,allowTemporary=false,lock=true):Promise<Identity>{
+ private async identity(c:SqlConnection,token:string,lock=true):Promise<Identity>{
   const row=(await c.query<AccountRow>(`select e.id,e.business_id,e.full_name,e.role,e.status,b.is_active,coalesce(cr.must_change_pin,false) as must_change_pin,null as credential from attendance.auth_sessions s join attendance.employees e on e.id=s.employee_id join attendance.businesses b on b.id=e.business_id left join attendance.employee_credentials cr on cr.employee_id=e.id where s.token_hash=$1 and s.revoked_at is null and s.expires_at>now() and e.business_id=$2 ${lock?'for update of e':''}`,[tokenHash(token),this.businessId])).rows[0];
   if(!row||row.status!=='active'||!row.is_active)throw new AuthError('UNAUTHENTICATED',401,'Silakan masuk kembali.');
-  if(row.must_change_pin&&!allowTemporary)throw new AuthError('PIN_CHANGE_REQUIRED',403,'Ganti PIN sementara sebelum melanjutkan.');
-  return {id:row.id,businessId:row.business_id,fullName:row.full_name,role:row.role,mustChangePin:!!row.must_change_pin};
+  return {id:row.id,businessId:row.business_id,fullName:row.full_name,role:row.role,pinChangeSuggested:!!row.must_change_pin};
  }
  withIdentity<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){return this.db.transaction(async c=>work(c,await this.identity(c,token)))}
  withOwner<T>(token:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
@@ -61,19 +61,19 @@ export class AuthService {
  withOwnerAndEmployee<T>(token:string,employeeId:string,work:(c:SqlConnection,actor:Identity)=>Promise<T>){
   z.uuid().parse(employeeId);
   return this.db.transaction(async c=>{
-   const actor=await this.identity(c,token,false,false);requireOwner(actor);
+   const actor=await this.identity(c,token,false);requireOwner(actor);
    await c.query('select id from attendance.employees where business_id=$1 and id=ANY($2::uuid[]) order by id for update',[actor.businessId,[actor.id,employeeId]]);
    const current=await this.identity(c,token);requireOwner(current);
    return work(c,current);
   });
  }
- me(token:string,allowTemporary=false){return this.db.transaction(c=>this.identity(c,token,allowTemporary))}
+ me(token:string){return this.db.transaction(c=>this.identity(c,token))}
  async logout(token:string){await this.db.transaction(async c=>{await c.query('update attendance.auth_sessions set revoked_at=now() where token_hash=$1 and revoked_at is null',[tokenHash(token)])})}
  async changePin(token:string,currentValue:unknown,nextValue:unknown){
   const current=secretInput.parse(currentValue),next=pinSchema.parse(nextValue);
   if(current===next)throw new AuthError('INVALID_PIN',400,'PIN baru harus berbeda.');
   const result=await this.db.transaction(async c=>{
-   const actor=await this.identity(c,token,true);
+   const actor=await this.identity(c,token);
    if(actor.role!=='employee')throw new AuthError('FORBIDDEN',403,'Akses tidak diizinkan.');
    if(!await this.limit(c,'change-pin:'+actor.id,5))return new AuthError('RATE_LIMITED',429,'Terlalu banyak percobaan. Coba lagi nanti.');
    const credential=(await c.query<{pin_hash:string}>('select pin_hash from attendance.employee_credentials where employee_id=$1 for update',[actor.id])).rows[0];

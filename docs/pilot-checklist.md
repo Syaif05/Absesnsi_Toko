@@ -30,7 +30,7 @@ Isi saat target dan jadwal pilot disepakati. Bukti berupa hasil/status/request I
 
 - [ ] Owner dari HP menambah/edit toko dan radius, karyawan, ID login, reset PIN, nonaktif/reaktif tanpa developer mengedit kode.
 - [ ] Owner publish jadwal normal/lintas malam, overlap ditolak; employee hanya melihat jadwal sendiri.
-- [ ] PIN awal wajib diganti; ID/PIN salah ditolak; nonaktif/reset mencabut akses lama.
+- [ ] PIN awal langsung dapat dipakai dan ganti PIN di Akun opsional; ID/PIN salah ditolak; nonaktif/reset mencabut akses lama.
 - [ ] Kamera HTTPS dan GPS nyata pada Android/iPhone; preview/retake, izin ditolak/akurasi buruk/coba lagi jelas.
 - [ ] Check-in/out normal memakai waktu server, double tap/retry tidak menggandakan event.
 - [ ] Luar radius/GPS gagal + alasan menjadi pending, check-out pending diperbolehkan, approval sah/ditolak tampil konsisten.

@@ -4,7 +4,7 @@ Alamat website HTTPS diberikan setelah deployment. Panduan ini menjelaskan fitur
 
 ## Pemilik
 
-1. Masuk di `/login` sebagai owner menggunakan ID dan password kuat yang diberikan lewat kanal aman. Buka `/account` untuk mengganti password; semua sesi akan dicabut sehingga perlu login ulang. Owner tidak menggunakan PIN karyawan.
+1. Masuk di `/login` sebagai owner menggunakan ID dan password kuat yang diberikan lewat kanal aman. Buka menu Akun (`/account`) → Ganti password jika ingin menggantinya (opsional); semua sesi akan dicabut sehingga perlu login ulang. Owner tidak menggunakan PIN karyawan.
 2. Dari akun buka pengelolaan usaha (`/owner`). Lengkapi profil usaha dan aturan: timezone, radius, akurasi GPS dan toleransi. Periksa nilai bersama penanggung jawab toko. Pengaturan tidak menerima credential database/API.
 3. Pada Toko, tambah nama/kode unik, alamat, latitude/longitude dan radius. Verifikasi koordinat di lokasi nyata. Gunakan nonaktif untuk toko yang berhenti beroperasi agar riwayat tetap tersimpan.
 4. Pada Karyawan, tambah nama, ID unik, toko asal dan penugasan. Catat PIN sementara yang hanya tampil sekali, berikan secara pribadi kepada orang yang benar. PIN lama tidak dapat dilihat. Reset PIN setelah verifikasi identitas; sesi lama dicabut. Ubah ID dengan konfirmasi; UUID/riwayat tetap. Nonaktifkan akun bila akses harus dihentikan.
@@ -17,7 +17,7 @@ Sebelum pilot: uji tambah toko/karyawan, ubah ID, reset PIN, publish shift dan a
 
 ## Karyawan
 
-1. Buka alamat HTTPS, login menggunakan ID karyawan + PIN sementara dari owner. Ganti PIN ketika diminta; gunakan PIN pribadi minimal 6 digit. Bila lupa, hubungi owner untuk reset. Jangan berbagi akun atau menyimpan PIN di HP bersama.
+1. Buka alamat HTTPS, login menggunakan ID karyawan + PIN sementara dari owner. Anda dapat langsung masuk. Jika ingin mengganti PIN, buka menu Akun → Ganti PIN (opsional); PIN baru minimal 6 digit. Bila lupa, hubungi owner untuk reset. Jangan berbagi akun atau menyimpan PIN di HP bersama.
 2. Periksa Jadwal (`/my-schedule`), toko dan jam shift. Jadwal wajib sudah publish; bila kosong/salah, hubungi owner. Jangan memakai akun orang lain atau menganggap jadwal contoh sebagai jadwal kerja.
 3. Buka Absensi (`/attendance`), pilih masuk atau pulang. Izinkan kamera dan lokasi ketika browser meminta. Ambil selfie langsung, periksa preview, ambil ulang bila perlu lalu kirim. Foto galeri tidak menjadi jalur normal.
 4. Tunggu konfirmasi server. Jika koneksi gagal, ikuti pesan retry; jangan menganggap tombol ditekan berarti berhasil. Aplikasi tidak mengklaim absen sukses saat offline. Waktu resmi berasal dari server.

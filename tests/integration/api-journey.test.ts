@@ -37,8 +37,9 @@ it('API-only journey: owner setup, PIN change, overnight-safe schedule, selfie/G
  const login=await ah(req('POST','auth/owner/login','',{code:'flow-owner',credential:'only-for-isolated-test'}),'owner-login');await data(login);ownerToken=login.cookies.get(cookieName)!.value;
  const stores=[];for(let i=1;i<=3;i++)stores.push(await data(await oh(req('POST','stores',ownerToken,{name:'Toko '+i,code:'B'+i,address:'Alamat fiktif',lat:-6.2,lng:106.8}),'stores')));expect(stores).toHaveLength(3);storeId=stores[1].id;
  const employee=await data(await oh(req('POST','employees',ownerToken,{fullName:'Pegawai Fiktif',code:'FLOW-01',storeId:stores[0].id}),'employees'));employeeId=employee.employee.id;
- const initialLogin=await ah(req('POST','auth/employee/login','',{code:'FLOW-01',credential:employee.temporaryPin}),'employee-login');expect((await data(initialLogin)).mustChangePin).toBe(true);const temporary=initialLogin.cookies.get(cookieName)!.value;
+ const initialLogin=await ah(req('POST','auth/employee/login','',{code:'FLOW-01',credential:employee.temporaryPin}),'employee-login');expect((await data(initialLogin)).pinChangeSuggested).toBe(true);const temporary=initialLogin.cookies.get(cookieName)!.value;
  expect((await oh(req('GET','stores',temporary),'stores')).status).toBe(403);
+ expect((await th(req('GET','me/attendance/context',temporary),'context')).status).toBe(200);
  await data(await ah(req('POST','auth/change-pin',temporary,{currentPin:employee.temporaryPin,newPin:'654321'}),'change-pin'));expect((await ah(req('GET','me',temporary),'me')).status).toBe(401);
  const employeeLogin=await ah(req('POST','auth/employee/login','',{code:'FLOW-01',credential:'654321'}),'employee-login');await data(employeeLogin);const token=employeeLogin.cookies.get(cookieName)!.value;
  expect((await ah(req('POST','auth/change-password',token,{currentPassword:'only-for-isolated-test',newPassword:'not-allowed-owner-password'}),'change-password')).status).toBe(403);

@@ -10,7 +10,6 @@ export default async function ApprovalsPage(){
  const token=(await cookies()).get(cookieName)?.value;if(!token)redirect('/login');
  try{const actor=await authRuntime().service.me(token);requireOwner(actor);}catch(error){
   if(error instanceof AuthError&&error.status===401)redirect('/login');
-  if(error instanceof AuthError&&error.code==='PIN_CHANGE_REQUIRED')redirect('/account');
   return <main className="auth-page"><section className="panel"><h1>{error instanceof AuthError&&error.status===403?'Akses tidak diizinkan':'Persetujuan belum tersedia'}</h1><p>Periksa akses akun atau koneksi database.</p><Link href="/account">Kembali ke akun</Link></section></main>;
  }
  return <ApprovalsPanel inbox={true}/>;

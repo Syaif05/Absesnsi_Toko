@@ -11,7 +11,6 @@ export async function reportingPage(view:'dashboard'|'reports'){
  try{const initial=await new ReportingService(authRuntime().service).context(token);return <ReportingPanel view={view} initial={initial}/>}
  catch(error){
   if(error instanceof AuthError&&error.status===401)redirect('/login');
-  if(error instanceof AuthError&&error.code==='PIN_CHANGE_REQUIRED')redirect('/account');
   return <main className="auth-page"><section className="panel"><h1>{error instanceof AuthError&&error.status===403?'Akses tidak diizinkan':'Monitoring belum tersedia'}</h1><p>{error instanceof AuthError&&error.status===403?'Halaman ini hanya untuk owner dengan akun aktif.':'Koneksi database perlu diperiksa. Tidak ada data contoh yang ditampilkan sebagai data usaha.'}</p><Link href="/account">Kembali ke akun</Link></section></main>;
  }
 }

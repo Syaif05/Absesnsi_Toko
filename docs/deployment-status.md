@@ -28,3 +28,5 @@ Sebelum migrasi: enam jurnal canonical diperiksa hash/urutannya; owner aktif, to
 Akun owner awal memerlukan bootstrap dengan identitas/password kuat melalui CLI satu kali sesuai [runbook](deployment-handover.md). Tidak ada ID/password default yang bisa dipakai untuk login. Belum membuat data nyata toko/karyawan/jadwal. Native backup/restore, salinan kedua, scheduler/monitoring, kebijakan privasi/retensi, validasi plan komersial dan pilot satu toko lalu kedua toko tetap terbuka. Semua tes UI/UX/perangkat/kamera/GPS tetap ditunda sesuai permintaan pemilik.
 
 Deployment tidak berarti Fase 10 diterima. Gunakan [checklist pilot](pilot-checklist.md) untuk penerimaan setelah bootstrap dan semua prasyarat terpenuhi. Tidak memulai Fase 11.
+
+Pembaruan setelah publikasi awal: owner dan satu akun karyawan awal sudah dibuat atas permintaan pengguna; login API keduanya serta preflight 18/18 telah lulus. Credential hanya dibagikan melalui file privat lokal, tidak dimasukkan ke repository. Revisi berikutnya pada [login dan PIN opsional](login-revision.md) mengganti kebijakan wajib PIN pertama; akun lama tetap dapat dipakai. Status UI/pilot tetap belum diterima.

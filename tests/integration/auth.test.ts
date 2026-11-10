@@ -27,44 +27,44 @@ it('bootstrap creates exactly one owner and cannot repeat',async()=>{
 it('login hashes credentials, returns no old PIN, and stores only token hash',async()=>{
  ownerToken=(await service.login('owner','reza','owner-password-for-test')).token;
  const result=await service.login('employee','EMP-1','123456');employeeToken=result.token;
- expect(result.mustChangePin).toBe(true);
+ expect(result.pinChangeSuggested).toBe(true);
  const row=(await pg.query<{pin_hash:string}>('select pin_hash from attendance.employee_credentials')).rows[0];
  expect(row.pin_hash).toContain('$argon2id$');expect(row.pin_hash).not.toBe('123456');
  expect((await pg.query('select * from attendance.auth_sessions where token_hash=$1',[tokenHash(employeeToken)])).rows).toHaveLength(1);
  expect((await pg.query('select * from attendance.auth_sessions where token_hash=$1',[employeeToken])).rows).toHaveLength(0);
 });
-it('temporary PIN session cannot access normal protected resources or reset another employee',async()=>{
- await expect(service.me(employeeToken)).rejects.toMatchObject({code:'PIN_CHANGE_REQUIRED'});
- expect((await service.me(employeeToken,true)).mustChangePin).toBe(true);
+it('initial PIN grants normal own-resource access while owner actions remain forbidden',async()=>{
+ expect((await service.me(employeeToken)).pinChangeSuggested).toBe(true);
  await expect(service.resetPin(employeeToken,employeeId)).rejects.toMatchObject({status:403});
 });
 it('change PIN requires current secret and revokes old sessions',async()=>{
  await expect(service.changePin(employeeToken,'999999','654321')).rejects.toMatchObject({code:'INVALID_LOGIN'});
  await service.changePin(employeeToken,'123456','654321');
  await expect(service.me(employeeToken)).rejects.toMatchObject({status:401});
- const result=await service.login('employee','EMP-1','654321');employeeToken=result.token;expect(result.mustChangePin).toBe(false);
+ const result=await service.login('employee','EMP-1','654321');employeeToken=result.token;expect(result.pinChangeSuggested).toBe(false);
  await expect(service.resetPin(employeeToken,employeeId)).rejects.toMatchObject({status:403});
 });
 it('owner reset returns a temporary PIN once and revokes existing sessions',async()=>{
  const result=await service.resetPin(ownerToken,employeeId);expect(result.temporaryPin).toMatch(/^\d{6}$/);
  await expect(service.me(employeeToken)).rejects.toMatchObject({status:401});
- const newSession=await service.login('employee','EMP-1',result.temporaryPin);expect(newSession.mustChangePin).toBe(true);
+ const newSession=await service.login('employee','EMP-1',result.temporaryPin);expect(newSession.pinChangeSuggested).toBe(true);
  employeeToken=newSession.token;
+ const resetIdentity=await service.me(employeeToken);expect(resetIdentity.pinChangeSuggested).toBe(true);expect(()=>requireOwnResource(resetIdentity,employeeId,businessId)).not.toThrow();
  const logs=JSON.stringify((await pg.query('select metadata_redacted from attendance.audit_logs')).rows);
  expect(logs).not.toContain(result.temporaryPin);
  expect(JSON.stringify(await service.me(ownerToken))).not.toContain('password');
 });
 it('inactive employees and expired/revoked sessions are rejected',async()=>{
  await pg.query("update attendance.employees set status='inactive' where id=$1",[employeeId]);
- await expect(service.me(employeeToken,true)).rejects.toMatchObject({status:401});
+ await expect(service.me(employeeToken)).rejects.toMatchObject({status:401});
  await pg.query("update attendance.employees set status='active' where id=$1",[employeeId]);
- await service.logout(employeeToken);await expect(service.me(employeeToken,true)).rejects.toMatchObject({status:401});
+ await service.logout(employeeToken);await expect(service.me(employeeToken)).rejects.toMatchObject({status:401});
  await pg.query('update attendance.auth_sessions set expires_at=now()-interval \'1 minute\' where token_hash=$1',[tokenHash(ownerToken)]);
  await expect(service.me(ownerToken)).rejects.toMatchObject({status:401});
  ownerToken=(await service.login('owner','reza','owner-password-for-test')).token;
 });
 it('RBAC prevents cross-employee and cross-business reads',()=>{
- const actor={id:employeeId,businessId,fullName:'Contoh',role:'employee' as const,mustChangePin:false};
+ const actor={id:employeeId,businessId,fullName:'Contoh',role:'employee' as const,pinChangeSuggested:false};
  expect(()=>requireOwnResource(actor,employeeId,businessId)).not.toThrow();
  expect(()=>requireOwnResource(actor,'another',businessId)).toThrow();
  expect(()=>requireOwnResource({...actor,role:'owner'},employeeId,'another-business')).toThrow();

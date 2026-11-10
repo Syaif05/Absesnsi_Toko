@@ -14,18 +14,18 @@ Buka `/login`, pilih Owner atau Karyawan. Halaman `/account` dijaga di server. T
 
 - POST `/api/v1/auth/owner/login`: `{code, credential}` (password).
 - POST `/api/v1/auth/employee/login`: `{code, credential}` (PIN).
-- GET `/api/v1/me`: identitas sendiri dan mustChangePin, tanpa hash atau credential.
+- GET `/api/v1/me`: identitas sendiri dan pinChangeSuggested (informasi saja), tanpa hash atau credential.
 - POST `/api/v1/auth/change-pin`: `{currentPin, newPin}`; hanya employee sendiri; PIN baru 6–12 digit; mencabut seluruh sesi setelah sukses.
 - POST `/api/v1/auth/logout`: `{}`; revoke sesi dan hapus cookie.
 - POST `/api/v1/employees/:id/reset-pin`: `{}`; owner bisnis yang sama, target employee saja; menghasilkan PIN sementara, mencabut sesi dan mencatat audit. Response no-store hanya menampilkan PIN pada saat reset; tidak ada endpoint untuk mengambil PIN lama.
 
-Seluruh POST mewajibkan JSON, Origin sama persis dengan APP_BASE_URL, dan ukuran body maksimal 4 KB. Token hanya dalam cookie HttpOnly, SameSite=Lax, Path=/; Secure dan prefix __Host- saat production. TTL 7 hari; status akun, bisnis, expiry, revocation dan kewajiban ganti PIN diperiksa di database setiap akses.
+Seluruh POST mewajibkan JSON, Origin sama persis dengan APP_BASE_URL, dan ukuran body maksimal 4 KB. Token hanya dalam cookie HttpOnly, SameSite=Lax, Path=/; Secure dan prefix __Host- saat production. TTL 7 hari; status akun, bisnis, expiry dan revocation diperiksa di database setiap akses.
 
 ## Keamanan yang diuji
 
 Argon2id 19 MiB, 2 iterasi, parallelism 1; token acak 256 bit disimpan SHA-256. Password owner terpisah dari PIN. Hash dummy dipakai saat ID tidak ditemukan. Login salah memiliki pesan yang sama untuk ID tidak ada, password salah atau akun nonaktif. Rate limit disimpan di PostgreSQL (5 percobaan per ID/role dan 100 total per bisnis dalam 15 menit); key ID di-HMAC. Batas global konservatif dapat menyebabkan pengguna sah menunggu saat serangan; tuning dan observabilitas diperlukan sebelum pilot. Change PIN dan reset juga dibatasi. Audit tidak memuat PIN/password/token.
 
-Session temporary hanya bisa memeriksa identitas, mengganti PIN, dan logout; guard resource lainnya menolaknya. Guard role owner dan guard ownership/business tersedia di `src/server/auth/types.ts`. Akses manager lintas toko belum diaktifkan.
+Revisi pengguna 10 November 2026: PIN awal/reset dapat digunakan untuk akses normal sesuai role. Ganti PIN bersifat opsional melalui menu Akun, bukan syarat login pertama. Kolom legacy must_change_pin dipertahankan sebagai indikator pinChangeSuggested dan tidak menjadi guard akses. Tidak ada migrasi/reset credential untuk perubahan kebijakan ini. Guard role owner dan guard ownership/business tersedia di `src/server/auth/types.ts`. Akses manager lintas toko belum diaktifkan.
 
 Tests menjalankan migrasi asli dan service/handler HTTP dengan PostgreSQL terisolasi: bootstrap satu kali, Argon2id, token hash, PIN awal, reset, revocation, akun nonaktif, expiry, ownership, brute force, CSRF, cookie dan respons 503. File SQL gabungan diuji pada database kosong dan tidak membuat akun demo.
 
@@ -40,3 +40,8 @@ Retensi teknis: hapus bucket rate limit yang resets_at lebih tua dari satu hari 
 Owner dapat mengganti password sendiri dari `/account` melalui POST `/api/v1/auth/change-password` dengan password lama; seluruh sesi lama dicabut dan harus login kembali. PIN lama tetap tidak bisa dibaca owner. Login berhasil mereset budget kegagalan per ID; budget global tetap berlaku.
 
 Runtime memvalidasi origin/protokol, produksi HTTPS, PostgreSQL TLS remote terverifikasi dan key/secret. `pnpm env:check` kini memeriksa konfigurasi runtime, bukan hanya field nonsecret Fase 0; koneksi diuji terpisah. CA provider dapat diisi melalui DATABASE_SSL_CA. Semua log unexpected memakai allowlist/requestId tanpa password/PIN/token/SQL. MFA aplikasi dan native concurrency/acceptance perangkat masih belum diuji/diimplementasikan sesuai [checkpoint hardening](hardening.md).
+
+
+## Revisi login — 10 November 2026
+
+Login memakai form mobile sederhana, pemilih Karyawan/Owner, tombol lihat/sembunyikan PIN/password, status loading dan dialog animasi sukses/gagal. Lanjutkan setelah sukses membuka dashboard owner atau halaman absensi karyawan. Menu Akun → Ganti PIN/password bersifat opsional dan tertutup secara default. Penggantian tetap membutuhkan credential lama dan mencabut sesi, sementara reset oleh owner tetap memerlukan role/audit. Instruksi pengguna ini menggantikan kewajiban ganti PIN awal pada PRD; kontrol ownership, status akun, hash, rate limit dan revocation tetap berlaku. Tidak ada login Google/Apple atau registrasi publik yang ditambahkan dari gambar referensi. Pengujian UI/UX tetap ditunda sesuai instruksi pengguna.

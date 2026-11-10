@@ -175,11 +175,11 @@ it('employee and manager cannot decide or read another employee request; cross-b
  await expect(foreignService.get(foreign.token,f.approvalId!)).rejects.toMatchObject({status:404});
  await expect(foreignService.decide(foreign.token,f.approvalId!,{status:'approved',note:'Tinjau bukti',confirmed:true})).rejects.toMatchObject({status:404});
 });
-it('inactive/revoked and temporary-PIN sessions are denied for submissions and detail',async()=>{
+it('inactive/revoked sessions are denied; initial PIN may submit own corrections',async()=>{
  const f=await fixture({pending:true});await q('UPDATE attendance.auth_sessions SET revoked_at=now() WHERE employee_id=$1',[f.id]);
  await expect(service.get(f.token,f.approvalId!)).rejects.toMatchObject({status:401});
  const temp=await fixture();await q("INSERT INTO attendance.employee_credentials(employee_id,pin_hash,must_change_pin) VALUES($1,'fixture-not-login',true)",[temp.id]);
- await expect(service.submit(temp.token,input(temp))).rejects.toMatchObject({code:'PIN_CHANGE_REQUIRED'});
+ expect((await service.submit(temp.token,input(temp))).status).toBe('pending');
  const inactive=await fixture();await q("UPDATE attendance.employees SET status='inactive' WHERE id=$1",[inactive.id]);await expect(service.targets(inactive.token,{})).rejects.toMatchObject({status:401});
 });
 it('location submissions reuse the existing automatic pending request and cannot bypass an inside event',async()=>{

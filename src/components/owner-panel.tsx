@@ -381,8 +381,8 @@ export function OwnerPanel({
             <h2>PIN sementara untuk {pin.code}</h2>
             <strong className="one-time-pin">{pin.value}</strong>
             <p>
-              Catat sekarang dan sampaikan secara aman. Karyawan wajib
-              menggantinya saat login. Setelah ditutup, PIN ini tidak dapat
+              Catat sekarang dan sampaikan secara aman. Karyawan dapat
+              menggantinya kapan saja melalui menu Akun. Setelah ditutup, PIN ini tidak dapat
               dibaca kembali.
             </p>
             <button onClick={() => setPin(null)}>

@@ -91,11 +91,11 @@ it('invalid ranges and unexpected filters fail safely',async()=>{
  for(const values of [{from:today,to:today},{from:today,to:dayAfter(today,32)},{from:'2026-02-30',to:today},{...range,offset:1},{...range,employeeId:'invalid'}])await expect(service.summary(owner.token,values)).rejects.toThrow();
  await expect(service.history(owner.token,params({category:'approved'}))).rejects.toThrow();await expect(service.stores(owner.token,params({offset:-1}))).rejects.toThrow();
 });
-it('employees/managers cannot read monitoring or reports; revoked and temporary-PIN sessions fail',async()=>{
+it('employees/managers including initial-PIN accounts cannot read reports; revoked sessions fail',async()=>{
  await expect(service.summary(normal.token,params())).rejects.toMatchObject({status:403});
  const manager=await actor('manager');await expect(service.history(manager.token,params())).rejects.toMatchObject({status:403});
  const revoked=await actor('owner');await q('UPDATE attendance.auth_sessions SET revoked_at=now() WHERE employee_id=$1',[revoked.id]);await expect(service.context(revoked.token)).rejects.toMatchObject({status:401});
- const temporary=await actor();await q("INSERT INTO attendance.employee_credentials(employee_id,pin_hash,must_change_pin) VALUES($1,'fixture-not-login',true)",[temporary.id]);await expect(service.detail(temporary.token,normal.sessionId!,{})).rejects.toMatchObject({code:'PIN_CHANGE_REQUIRED'});
+ const temporary=await actor();await q("INSERT INTO attendance.employee_credentials(employee_id,pin_hash,must_change_pin) VALUES($1,'fixture-not-login',true)",[temporary.id]);await expect(service.summary(temporary.token,params())).rejects.toMatchObject({status:403});await expect(service.detail(temporary.token,normal.sessionId!,{})).rejects.toMatchObject({status:404});
 });
 it('cross-business store, employee filters and session detail are inaccessible',async()=>{
  const foreign=randomUUID(),foreignStore=randomUUID();await q("INSERT INTO attendance.businesses(id,name) VALUES($1,'Foreign business')",[foreign]);await q("INSERT INTO attendance.stores(id,business_id,code,name,address,lat,lng) VALUES($1,$2,'X','Other','Other',0,0)",[foreignStore,foreign]);const employee=await actor('employee',foreign),foreignOwner=await actor('owner',foreign);

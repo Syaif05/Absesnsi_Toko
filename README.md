@@ -100,3 +100,7 @@ Checkpoint lokal: **136 tes backend lulus**, typecheck/lint/build standalone dan
 Repository kini [Syaif05/Absesnsi_Toko](https://github.com/Syaif05/Absesnsi_Toko); website [absesnsi-toko.vercel.app](https://absesnsi-toko.vercel.app) berstatus READY. Supabase `absensi kita` terhubung melalui Session pooler/TLS verified, migrasi canonical 0000–0009 sudah diterapkan, smoke API HTTPS lulus. ENV rahasia hanya pada server, tidak masuk GitHub. Detail terkini dan bukti ada pada [status deployment](docs/deployment-status.md); ini memperbarui blocker koneksi/publikasi di checkpoint sebelumnya.
 
 Akun owner pertama belum bootstrap, jadi belum ada kredensial login awal. Preflight tetap belum menyatakan technicalReady karena owner belum dibuat. UI/UX, perangkat, native restore dan pilot tetap belum diuji/disetujui; target Vercel production bukan persetujuan go-live usaha.
+
+## Revisi login dan PIN opsional
+
+Login sederhana untuk HP, ikon mata, feedback animasi berhasil/gagal, dan menu Akun → Ganti PIN/password opsional tersedia. PIN awal maupun hasil reset langsung dapat digunakan tanpa dipaksa mengganti PIN. Credential yang sudah diberikan tetap berlaku. [Catatan perubahan dan verifikasi](docs/login-revision.md). Pengujian UI/UX tetap ditunda.
