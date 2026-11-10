@@ -72,3 +72,9 @@ GET owner: `/api/v1/dashboard/summary`, `/dashboard/stores`, `/dashboard/activit
 Query utama: from/to tanggal ISO (akhir eksklusif, 1–31 hari), storeId?/employeeId?. Daftar menambah offset dan maksimum 20 baris. Riwayat attendance menerima category=all/valid/pending/rejected/not_recorded/upcoming; KPI tidak memakai category. Endpoint employee menolak employeeId query karena identitas sudah pada path. Detail memakai requestOffset untuk 20 histori permintaan per halaman. Seluruhnya GET/no-store, role/business/ownership server-side; data di luar scope 404 dan endpoint global untuk employee/manager 403.
 
 Summary: total jadwal = valid+pending+rejected+notRecorded+upcoming; recorded = valid+pending+rejected. Urutan kategori rejection > pending > sah > belum dimulai/belum tercatat. Pending request dihitung terpisah dari kategori absensi. Histori/KPI memakai awal shift snapshot; activity memakai waktu kejadian. Detail dan contoh perilaku di [reporting.md](reporting.md).
+
+## Hardening Fase 9
+
+POST `/api/v1/auth/change-password` (owner sendiri) menerima `{currentPassword,newPassword}`; password baru 12–128 karakter, berbeda, validasi password lama dan rate limit 5/15 menit. Sukses mencabut seluruh sesi owner, menghapus cookie dan menulis audit tanpa plaintext; login ulang diperlukan. Employee tidak dapat memakainya.
+
+JSON harus MIME application/json, UTF-8 valid, ≤4096 byte. Deadline pembacaan JSON/multipart 30s menghasilkan 408/cancel tanpa klaim tersimpan. Multipart tetap dibatasi ukuran Fase 6. Error unexpected mempunyai requestId yang sama dengan log allowlist (tanpa payload/SQL/token/URL/stack). Abort transaksi 40P01/40001 diretry terbatas; COMMIT ambigu tidak direplay. Konflik lock persisten menghasilkan 409 TRANSACTION_BUSY. Detail dan keterbatasan ada di [hardening.md](hardening.md).

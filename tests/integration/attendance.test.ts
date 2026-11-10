@@ -34,7 +34,7 @@ async function fixture(role='employee',biz=businessId){
  const id=randomUUID(),scheduleId=randomUUID(),token=randomUUID();
  await pg.query<Record<string,unknown>>(`INSERT INTO attendance.employees(id,business_id,employee_code,full_name,role) VALUES($1,$2,$3,'Pengguna fiktif',$4)`,[id,biz,id,role]);
  await pg.query<Record<string,unknown>>(`INSERT INTO attendance.auth_sessions(employee_id,token_hash,expires_at) VALUES($1,$2,now()+interval '1 day')`,[id,tokenHash(token)]);
- await pg.query<Record<string,unknown>>(`INSERT INTO attendance.schedules(id,employee_id,store_id,starts_at,ends_at,status,created_by,rule_snapshot) VALUES($1,$2,$3,now()-interval '30 minutes',now()+interval '7 hours','published',$2,$4)`,[scheduleId,id,storeId,JSON.stringify(rules)]);
+ if(biz===businessId)await pg.query<Record<string,unknown>>(`INSERT INTO attendance.schedules(id,employee_id,store_id,starts_at,ends_at,status,created_by,rule_snapshot) VALUES($1,$2,$3,now()-interval '30 minutes',now()+interval '7 hours','published',$2,$4)`,[scheduleId,id,storeId,JSON.stringify(rules)]);
  const input:Submission={idempotencyKey:randomUUID(),scheduleId,location:{status:'available',lat:-6.2,lng:106.8,accuracyM:20},reason:''};
  return {id,token,scheduleId,input};
 }

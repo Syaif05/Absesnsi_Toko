@@ -64,6 +64,13 @@
       "when": 1794277634891,
       "tag": "0008_monitoring_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794280007212,
+      "tag": "0009_hardening_integrity",
+      "breakpoints": true
     }
   ]
 }

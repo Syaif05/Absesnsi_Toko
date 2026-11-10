@@ -1,3 +1,4 @@
+import { reportFailure } from '../security/observability';
 import { NextRequest,NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -21,8 +22,9 @@ export function createApprovalHandler(getRuntime:()=>{approvals:ApprovalService;
    }else throw new AuthError('METHOD_NOT_ALLOWED',405,'Metode tidak diizinkan.');
    return NextResponse.json({data},{headers:{'Cache-Control':'no-store'}});
   }catch(error){
+      const requestId=randomUUID();if(!(error instanceof AuthError)&&!(error instanceof z.ZodError))reportFailure(error,requestId,"approvals");
    const known=error instanceof AuthError,invalid=error instanceof z.ZodError,duplicate=typeof error==='object'&&error!==null&&'code' in error&&error.code==='23505';
-   return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':duplicate?'APPROVAL_CONFLICT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa alasan, waktu koreksi, dan konfirmasi Anda.':duplicate?'Catatan atau permintaan bersamaan sudah tersimpan. Muat ulang untuk memeriksa hasil.':'Layanan persetujuan belum tersedia. Periksa hasil sebelum mencoba ulang.',requestId:randomUUID()}},{status:known?error.status:invalid?400:duplicate?409:503,headers:{'Cache-Control':'no-store'}});
+   return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':duplicate?'APPROVAL_CONFLICT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa alasan, waktu koreksi, dan konfirmasi Anda.':duplicate?'Catatan atau permintaan bersamaan sudah tersimpan. Muat ulang untuk memeriksa hasil.':'Layanan persetujuan belum tersedia. Periksa hasil sebelum mencoba ulang.',requestId}},{status:known?error.status:invalid?400:duplicate?409:503,headers:{'Cache-Control':'no-store'}});
   }
  };
 }

@@ -1,3 +1,4 @@
+import { reportFailure } from '../security/observability';
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -72,6 +73,7 @@ export function createOwnerHandler(
         { status, headers: { "Cache-Control": "no-store" } },
       );
     } catch (error) {
+      const requestId=randomUUID();if(!(error instanceof AuthError)&&!(error instanceof z.ZodError))reportFailure(error,requestId,"owner");
       const known = error instanceof AuthError,
         validation = error instanceof z.ZodError;
       const duplicate =
@@ -106,7 +108,7 @@ export function createOwnerHandler(
               : duplicate
                 ? { code: "ID atau kode ini sudah digunakan." }
                 : undefined,
-            requestId: randomUUID(),
+            requestId,
           },
         },
         {

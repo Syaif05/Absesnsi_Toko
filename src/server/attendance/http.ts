@@ -1,3 +1,5 @@
+import { readBoundedBytes } from '../security/body';
+import { reportFailure } from '../security/observability';
 import { NextRequest,NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -20,11 +22,7 @@ export function createAttendanceHandler(getRuntime:()=>{attendance:AttendanceSer
         await authorize(token);
         if(!request.headers.get('content-type')?.startsWith('multipart/form-data;'))throw new AuthError('INVALID_INPUT',400,'Kirim selfie dan metadata.');
         const limit=MAX_PHOTO_BYTES+16384;
-        if(Number(request.headers.get('content-length'))>limit)throw new AuthError('PAYLOAD_TOO_LARGE',413,'Foto terlalu besar. Ambil ulang.');
-        const reader=request.body?.getReader(),chunks:Uint8Array[]=[];let length=0;
-        if(!reader)throw new AuthError('INVALID_INPUT',400,'Selfie belum tersedia.');
-        while(true){const next=await reader.read();if(next.done)break;length+=next.value.length;if(length>limit){await reader.cancel();throw new AuthError('PAYLOAD_TOO_LARGE',413,'Foto terlalu besar. Ambil ulang.')}chunks.push(next.value)}
-        const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}
+        const bytes=await readBoundedBytes(request,limit);
         let form:FormData;
         try{form=await new Response(bytes,{headers:{'content-type':request.headers.get('content-type')!}}).formData()}catch{throw new AuthError('INVALID_INPUT',400,'Data selfie tidak valid.')}
         const photo=form.get('photo'),meta=form.get('metadata');
@@ -34,8 +32,9 @@ export function createAttendanceHandler(getRuntime:()=>{attendance:AttendanceSer
       }else throw new AuthError('METHOD_NOT_ALLOWED',405,'Metode tidak diizinkan.');
       return NextResponse.json({data},{headers:{'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
     }catch(error){
+      const requestId=randomUUID();if(!(error instanceof AuthError)&&!(error instanceof z.ZodError))reportFailure(error,requestId,"attendance");
       const known=error instanceof AuthError,invalid=error instanceof z.ZodError;
-      return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa data selfie dan lokasi.':'Layanan absensi belum tersedia. Pengiriman belum dikonfirmasi; coba lagi dengan foto yang sama.',requestId:randomUUID()}},{status:known?error.status:invalid?400:503,headers:{'Cache-Control':'no-store'}});
+      return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa data selfie dan lokasi.':'Layanan absensi belum tersedia. Pengiriman belum dikonfirmasi; coba lagi dengan foto yang sama.',requestId}},{status:known?error.status:invalid?400:503,headers:{'Cache-Control':'no-store'}});
     }
   };
 }

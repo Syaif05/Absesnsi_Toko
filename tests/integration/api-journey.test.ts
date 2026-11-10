@@ -1,0 +1,75 @@
+import { it,expect,beforeAll,afterAll } from 'vitest';
+import { readFileSync,readdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
+import { NextRequest,type NextResponse } from 'next/server';
+import sharp from 'sharp';
+import { AuthService } from '../../src/server/auth/service';
+import { OwnerService } from '../../src/server/owner/service';
+import { ScheduleService } from '../../src/server/schedules/service';
+import { AttendanceService } from '../../src/server/attendance/service';
+import { ApprovalService } from '../../src/server/approvals/service';
+import { ReportingService } from '../../src/server/reporting/service';
+import { createAuthHandler,cookieName } from '../../src/server/auth/http';
+import { createOwnerHandler } from '../../src/server/owner/http';
+import { createScheduleHandler } from '../../src/server/schedules/http';
+import { createAttendanceHandler } from '../../src/server/attendance/http';
+import { createApprovalHandler } from '../../src/server/approvals/http';
+import { createReportingHandler } from '../../src/server/reporting/http';
+import { localParts,dayAfter } from '../../src/lib/schedule-dates';
+import type { AuthDatabase } from '../../src/server/auth/types';
+const pg=new PGlite({extensions:{btree_gist}}),businessId=randomUUID(),origin='http://localhost:3000';
+const db:AuthDatabase={transaction:work=>pg.transaction(tx=>work({query:(sql,args)=>tx.query(sql,args)}))};
+const auth=new AuthService(db,businessId,'backend-flow-test-secret-'.repeat(3)),owner=new OwnerService(auth),schedules=new ScheduleService(auth),approvals=new ApprovalService(auth),reporting=new ReportingService(auth);
+const photos=new Map<string,Uint8Array>(),attendance=new AttendanceService(auth,{uploadPrivate:async(path,bytes)=>{photos.set(path,bytes)},getSignedReadUrl:async(path,seconds)=>`https://fixture.invalid/${path}?expires=${seconds}`,delete:async path=>{photos.delete(path)}});
+const ah=createAuthHandler(()=>({service:auth,origin})),oh=createOwnerHandler(()=>({owner,origin})),sh=createScheduleHandler(()=>({schedules,origin})),th=createAttendanceHandler(()=>({attendance,origin,authorize:token=>auth.me(token)})),ph=createApprovalHandler(()=>({approvals,origin})),rh=createReportingHandler(()=>({reporting}));
+const q=(sql:string,args?:unknown[])=>pg.query<Record<string,unknown>>(sql,args);
+function req(method:string,path:string,token='',body?:unknown){return new NextRequest(origin+'/api/v1/'+path,{method,headers:{origin,cookie:cookieName+'='+token,...(body===undefined?{}:{'content-type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body)})}
+async function data(response:NextResponse){expect(response.status).toBeGreaterThanOrEqual(200);expect(response.status).toBeLessThan(300);return (await response.json()).data}
+let ownerToken='',employeeId='',storeId='',scheduleId='',sessionId='';
+beforeAll(async()=>{
+ for(const file of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())await pg.exec(readFileSync('drizzle/'+file,'utf8'));
+ await auth.bootstrap({code:'flow-owner',password:'only-for-isolated-test',fullName:'Owner Fiktif',businessName:'Usaha Fiktif'});
+},30000);
+afterAll(()=>pg.close());
+it('API-only journey: owner setup, PIN change, overnight-safe schedule, selfie/GPS, approval, correction, report, reset and logout',async()=>{
+ const login=await ah(req('POST','auth/owner/login','',{code:'flow-owner',credential:'only-for-isolated-test'}),'owner-login');await data(login);ownerToken=login.cookies.get(cookieName)!.value;
+ const stores=[];for(let i=1;i<=3;i++)stores.push(await data(await oh(req('POST','stores',ownerToken,{name:'Toko '+i,code:'B'+i,address:'Alamat fiktif',lat:-6.2,lng:106.8}),'stores')));expect(stores).toHaveLength(3);storeId=stores[1].id;
+ const employee=await data(await oh(req('POST','employees',ownerToken,{fullName:'Pegawai Fiktif',code:'FLOW-01',storeId:stores[0].id}),'employees'));employeeId=employee.employee.id;
+ const initialLogin=await ah(req('POST','auth/employee/login','',{code:'FLOW-01',credential:employee.temporaryPin}),'employee-login');expect((await data(initialLogin)).mustChangePin).toBe(true);const temporary=initialLogin.cookies.get(cookieName)!.value;
+ expect((await oh(req('GET','stores',temporary),'stores')).status).toBe(403);
+ await data(await ah(req('POST','auth/change-pin',temporary,{currentPin:employee.temporaryPin,newPin:'654321'}),'change-pin'));expect((await ah(req('GET','me',temporary),'me')).status).toBe(401);
+ const employeeLogin=await ah(req('POST','auth/employee/login','',{code:'FLOW-01',credential:'654321'}),'employee-login');await data(employeeLogin);const token=employeeLogin.cookies.get(cookieName)!.value;
+ expect((await ah(req('POST','auth/change-password',token,{currentPassword:'only-for-isolated-test',newPassword:'not-allowed-owner-password'}),'change-password')).status).toBe(403);
+ const now=Date.now(),start=localParts(new Date(now-2*3600000).toISOString(),'Asia/Jakarta'),end=localParts(new Date(now+2*3600000).toISOString(),'Asia/Jakarta');
+ const draft=await data(await sh(req('POST','schedules',ownerToken,{employeeId,storeId,date:start.date,startTime:start.time,endTime:end.time,crossesMidnight:start.date!==end.date,templateId:null}),'schedules'));scheduleId=draft.id;
+ const published=await data(await sh(req('PATCH','schedules/'+scheduleId,ownerToken,{status:'published',version:1,confirmed:true}),'schedules',scheduleId));expect(published.store_id).toBe(storeId);
+ const jpeg=await sharp({create:{width:320,height:400,channels:3,background:'#8095f5'}}).jpeg().toBuffer();
+ function selfie(type:string,key:string,outside=false){const form=new FormData();form.set('metadata',JSON.stringify({idempotencyKey:key,scheduleId,location:{status:'available',lat:outside?-6.3:-6.2,lng:106.8,accuracyM:20},reason:outside?'Ditugaskan membantu di luar area':''}));form.set('photo',new Blob([new Uint8Array(jpeg)],{type:'image/jpeg'}),'synthetic-fixture.jpg');return new NextRequest(origin+'/api/v1/attendance/'+type,{method:'POST',headers:{origin,cookie:cookieName+'='+token},body:form})}
+ const key=randomUUID(),checkIn=await data(await th(selfie('check-in',key,true),'check_in'));expect(checkIn.reviewStatus).toBe('pending');sessionId=checkIn.sessionId;
+ const replay=await data(await th(selfie('check-in',key,true),'check_in'));expect(replay.id).toBe(checkIn.id);expect(photos.size).toBe(1);
+ await data(await th(selfie('check-out',randomUUID()),'check_out'));expect(photos.size).toBe(2);
+ const inbox=await data(await ph(req('GET','approvals?view=inbox&status=pending',ownerToken),'requests'));expect(inbox.items).toHaveLength(1);
+ expect((await ph(req('POST','approvals/x/decision',token,{status:'approved',note:'Sudah diperiksa',confirmed:true}),'decision',inbox.items[0].id)).status).toBe(403);
+ await data(await ph(req('POST','approvals/x/decision',ownerToken,{status:'approved',note:'Penugasan sudah dikonfirmasi',confirmed:true}),'decision',inbox.items[0].id));
+ const correction=await data(await ph(req('POST','approvals',token,{type:'attendance_correction',requestKey:randomUUID(),scheduleId,reason:'Memperbaiki jam masuk yang sebenarnya',changes:[{field:'check_in_at',value:published.starts_at}]}),'requests'));
+ await data(await ph(req('POST','approvals/x/decision',ownerToken,{status:'approved',note:'Waktu sudah diverifikasi',confirmed:true}),'decision',correction.id));
+ const detail=await data(await rh(req('GET','attendance/'+sessionId,token),'detail',sessionId));expect(detail.attendance.isCorrected).toBe(true);expect(detail.attendance.checkInAt).toBe(published.starts_at);expect(detail.events[0].recordedAt).toBe(checkIn.recordedAt);expect(detail.events).toHaveLength(2);
+ const range=new URLSearchParams({from:start.date,to:dayAfter(end.date,1)}),summary=await data(await rh(req('GET','dashboard/summary?'+range,ownerToken),'summary'));expect(summary.metrics.total).toBe(1);expect(summary.metrics.valid).toBe(1);expect(summary.metrics.pending).toBe(0);expect(summary.pendingRequests).toBe(0);
+ const reset=await data(await ah(req('POST','employees/x/reset-pin',ownerToken,{}),'reset-pin',employeeId));expect(reset.temporaryPin).toMatch(/^\d{6}$/);expect((await th(req('GET','attendance/x/photo',token),'photo',checkIn.id)).status).toBe(401);
+ const persisted=JSON.stringify((await q('SELECT metadata_redacted FROM attendance.audit_logs')).rows);expect(persisted).not.toContain('654321');expect(persisted).not.toContain(employee.temporaryPin);
+ await data(await ah(req('POST','auth/logout',ownerToken,{}),'logout'));expect((await oh(req('GET','stores',ownerToken),'stores')).status).toBe(401);
+});
+it('database rejects cross-business relations and replacing schedule identity after evidence exists',async()=>{
+ const business=randomUUID(),store=randomUUID(),other=randomUUID();await q("INSERT INTO attendance.businesses(id,name) VALUES($1,'Other fictitious business')",[business]);await q("INSERT INTO attendance.stores(id,business_id,code,name,address,lat,lng) VALUES($1,$2,'OTHER','Other','Address',0,0)",[store,business]);
+ await q("INSERT INTO attendance.employees(id,business_id,employee_code,full_name) VALUES($1,$2,'OTHER','Other')",[other,business]);
+ await expect(q('UPDATE attendance.employees SET business_id=$1 WHERE id=$2',[business,employeeId])).rejects.toThrow('identity is immutable');
+ await expect(q('UPDATE attendance.stores SET business_id=$1 WHERE id=$2',[business,storeId])).rejects.toThrow('identity is immutable');
+ await expect(q('UPDATE attendance.employees SET primary_store_id=$1 WHERE id=$2',[store,employeeId])).rejects.toThrow('business mismatch');
+ await expect(q("INSERT INTO attendance.employee_store_assignments(employee_id,store_id,starts_at) VALUES($1,$2,now())",[employeeId,store])).rejects.toThrow('business mismatch');
+ await expect(q('UPDATE attendance.schedules SET store_id=$1 WHERE id=$2',[store,scheduleId])).rejects.toThrow('business mismatch');
+ await expect(q('UPDATE attendance.attendance_sessions SET employee_id=$1 WHERE id=$2',[other,sessionId])).rejects.toThrow('employee mismatch');
+ const sameBusinessStore=String((await q('SELECT id FROM attendance.stores WHERE business_id=$1 AND id<>$2 LIMIT 1',[businessId,storeId])).rows[0].id);
+ await expect(q('UPDATE attendance.schedules SET store_id=$1 WHERE id=$2',[sameBusinessStore,scheduleId])).rejects.toThrow('identity is immutable');
+});

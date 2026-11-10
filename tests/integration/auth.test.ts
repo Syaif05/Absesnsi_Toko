@@ -107,3 +107,20 @@ it('wrong PIN attempts lock existing accounts without exposing credentials',asyn
  expect((await pg.query<{locked:boolean}>('select locked_until>now() as locked from attendance.employee_credentials where employee_id=$1',[id])).rows[0].locked).toBe(true);
  await expect(service.resetPin(ownerToken,'a1000000-0000-4000-8000-000000000099')).rejects.toMatchObject({status:404});
 });
+
+it('owner password rotation verifies old password, clears cookie, revokes every session and stores no plaintext',async()=>{
+ const ownerAgain=await service.login('owner','reza','owner-password-for-test');
+ await expect(service.changeOwnerPassword(employeeToken,'owner-password-for-test','new-owner-password-for-test')).rejects.toMatchObject({status:401});
+ await expect(service.changeOwnerPassword(ownerToken,'wrong-current-password','new-owner-password-for-test')).rejects.toMatchObject({status:401});
+ const response=await handler(new NextRequest('http://localhost:3000/api/v1/auth/change-password',{method:'POST',headers:{origin:'http://localhost:3000','content-type':'application/json',cookie:cookieName+'='+ownerToken},body:JSON.stringify({currentPassword:'owner-password-for-test',newPassword:'new-owner-password-for-test'})}),'change-password');
+ expect(response.status).toBe(200);expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
+ await expect(service.me(ownerToken)).rejects.toMatchObject({status:401});await expect(service.me(ownerAgain.token)).rejects.toMatchObject({status:401});
+ await expect(service.login('owner','reza','owner-password-for-test')).rejects.toMatchObject({status:401});
+ expect((await service.login('owner','reza','new-owner-password-for-test')).token).toBeTruthy();
+ expect(JSON.stringify((await pg.query('select metadata_redacted from attendance.audit_logs')).rows)).not.toContain('new-owner-password-for-test');
+ const row=(await pg.query<{password_hash:string}>('select password_hash from attendance.owner_credentials')).rows[0];expect(row.password_hash).toMatch(/^\$argon2id\$/);expect(row.password_hash).not.toContain('new-owner-password-for-test');
+});
+
+it('successful logins reset the account failure budget without bypassing failed-login throttling',async()=>{
+ for(let i=0;i<6;i++)expect((await service.login('owner','reza','new-owner-password-for-test')).token).toBeTruthy();
+});

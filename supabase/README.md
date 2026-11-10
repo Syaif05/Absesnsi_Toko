@@ -1,6 +1,6 @@
 # File SQL Supabase
 
-`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–8 untuk **database kosong**. Berisi schema privat attendance, 18 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
+`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–9 untuk **database kosong**. Berisi schema privat attendance, 18 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
 
 Pilih salah satu cara instalasi:
 
@@ -34,3 +34,7 @@ Migrasi 0007 menambah provenance koreksi/snapshot sesi, idempotency/context perm
 ## Monitoring Fase 8
 
 Migrasi 0008 menambah empat indeks read reporting; tabel tetap 18, tanpa perubahan data/izin. File gabungan memuat seluruh migrasi sampai Fase 8 untuk database kosong. Cloud masih pending 0006–0008 karena direct hostname PostgreSQL gagal DNS; tidak mengulang SQL gabungan pada project existing. Panduan monitoring dan otorisasi terdapat di `docs/reporting.md`.
+
+## Hardening Fase 9
+
+Migrasi 0009 menambah trigger scope bisnis/kepemilikan dan menjaga identitas jadwal dengan absensi. Tabel tetap 18, RLS tetap, tidak menghapus/mengganti data. Schema global extension/ACL tetap perlu diperiksa pada restore provider baru. Cloud pending 0006–0009; source SQL gabungan telah diperbarui. Lihat `docs/hardening.md` dan `docs/backup-restore.md`; kelulusan restore tes PGlite bukan bukti pg_restore Supabase native.

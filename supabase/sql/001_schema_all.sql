@@ -393,6 +393,36 @@ CREATE INDEX "approval_requests_target_type_target_id_index" ON "attendance"."ap
 CREATE INDEX "approval_requests_decided_at_id_index" ON "attendance"."approval_requests" USING btree ("decided_at","id") WHERE "attendance"."approval_requests"."decided_at" is not null;--> statement-breakpoint
 CREATE INDEX "attendance_events_recorded_at_id_index" ON "attendance"."attendance_events" USING btree ("recorded_at","id");--> statement-breakpoint
 CREATE INDEX "schedules_starts_at_id_index" ON "attendance"."schedules" USING btree ("starts_at","id");
+-- SOURCE: drizzle/0009_hardening_integrity.sql
+-- Defense in depth: UUID foreign keys must not cross business or schedule ownership.
+CREATE FUNCTION attendance.guard_workforce_scope() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$ BEGIN
+ IF TG_TABLE_NAME IN ('stores','shift_templates') THEN
+  IF NEW.business_id IS DISTINCT FROM OLD.business_id THEN RAISE EXCEPTION 'Business identity is immutable' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='employees' THEN
+  IF TG_OP='UPDATE' AND NEW.business_id IS DISTINCT FROM OLD.business_id THEN RAISE EXCEPTION 'Business identity is immutable' USING ERRCODE='23514'; END IF;
+  IF NEW.primary_store_id IS NOT NULL AND NOT EXISTS(SELECT FROM attendance.stores st WHERE st.id=NEW.primary_store_id AND st.business_id=NEW.business_id) THEN RAISE EXCEPTION 'Employee store business mismatch' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='employee_store_assignments' THEN
+  IF NOT EXISTS(SELECT FROM attendance.employees e JOIN attendance.stores st ON st.business_id=e.business_id WHERE e.id=NEW.employee_id AND st.id=NEW.store_id) THEN RAISE EXCEPTION 'Assignment business mismatch' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='schedules' THEN
+  IF NOT EXISTS(SELECT FROM attendance.employees e JOIN attendance.stores st ON st.business_id=e.business_id WHERE e.id=NEW.employee_id AND st.id=NEW.store_id AND (NEW.template_id IS NULL OR EXISTS(SELECT FROM attendance.shift_templates t WHERE t.id=NEW.template_id AND t.business_id=e.business_id))) THEN RAISE EXCEPTION 'Schedule business mismatch' USING ERRCODE='23514'; END IF;
+  IF TG_OP='UPDATE' AND (NEW.employee_id IS DISTINCT FROM OLD.employee_id OR NEW.store_id IS DISTINCT FROM OLD.store_id OR NEW.template_id IS DISTINCT FROM OLD.template_id) AND EXISTS(SELECT FROM attendance.attendance_sessions a WHERE a.schedule_id=OLD.id) THEN RAISE EXCEPTION 'Attendance schedule identity is immutable' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='attendance_sessions' THEN
+  IF NEW.schedule_id IS NOT NULL AND NOT EXISTS(SELECT FROM attendance.schedules s WHERE s.id=NEW.schedule_id AND s.employee_id=NEW.employee_id) THEN RAISE EXCEPTION 'Session schedule employee mismatch' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='attendance_events' THEN
+  IF NOT EXISTS(SELECT FROM attendance.employees e JOIN attendance.stores st ON st.business_id=e.business_id JOIN attendance.attendance_sessions a ON a.employee_id=e.id LEFT JOIN attendance.schedules s ON s.id=a.schedule_id WHERE e.id=NEW.employee_id AND st.id=NEW.store_id AND a.id=NEW.session_id AND (s.id IS NULL OR s.store_id=NEW.store_id)) THEN RAISE EXCEPTION 'Event store or business mismatch' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+--> statement-breakpoint
+CREATE TRIGGER workforce_store_business BEFORE UPDATE OF business_id ON attendance.stores FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_template_business BEFORE UPDATE OF business_id ON attendance.shift_templates FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_employee_scope BEFORE INSERT OR UPDATE OF primary_store_id,business_id ON attendance.employees FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_assignment_scope BEFORE INSERT OR UPDATE ON attendance.employee_store_assignments FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_schedule_scope BEFORE INSERT OR UPDATE ON attendance.schedules FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_session_scope BEFORE INSERT OR UPDATE ON attendance.attendance_sessions FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+CREATE TRIGGER workforce_event_scope BEFORE INSERT OR UPDATE ON attendance.attendance_events FOR EACH ROW EXECUTE FUNCTION attendance.guard_workforce_scope();
+REVOKE ALL ON FUNCTION attendance.guard_workforce_scope() FROM PUBLIC;
+
 CREATE SCHEMA IF NOT EXISTS drizzle;
 CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
@@ -404,4 +434,5 @@ INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('d89c81281cde4
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('fa39cfaa1e4a86599a202f3000764ed9b247d886722c11ba536d4edf02c2e118',1794273586916);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('3d4df84857ca91524b9cecef5a10c637386a2e999e1ac50556ce35cba70bbd49',1794274154113);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('b2deec8f3a69a3c134f7eb025bcae160cad1481bb111595c80e60321d36bd8f3',1794277634891);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('d45a2ff9fe40a163c70eace69e48faa97102dc8cc75a0f2f68d2a225852441ba',1794280007212);
 COMMIT;

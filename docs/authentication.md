@@ -34,3 +34,9 @@ Tests menjalankan migrasi asli dan service/handler HTTP dengan PostgreSQL teriso
 Login berhasil melalui browser terhadap PostgreSQL/Supabase cloud belum diuji karena koneksi ditunda. Service dan HTTP handler diuji dengan database PostgreSQL tes. Halaman login kedua peran diperiksa pada 320/375/390/768/1440 dan screenshot disimpan; kondisi layanan belum siap diuji di browser. Halaman akun setelah login belum di-review pada runtime database nyata. MFA owner belum diimplementasikan; diperlukan keputusan sebelum pilot. Uji concurrency banyak koneksi, perangkat asli, serta tuning Argon2/server/rate limit tetap diperlukan pada fase hardening.
 
 Retensi teknis: hapus bucket rate limit yang resets_at lebih tua dari satu hari melalui maintenance terotorisasi; jangan menghapus audit. Cleanup session kedaluwarsa direncanakan dalam runbook operasi. Tidak ada credential atau token dicetak dalam log aplikasi.
+
+## Hardening Fase 9
+
+Owner dapat mengganti password sendiri dari `/account` melalui POST `/api/v1/auth/change-password` dengan password lama; seluruh sesi lama dicabut dan harus login kembali. PIN lama tetap tidak bisa dibaca owner. Login berhasil mereset budget kegagalan per ID; budget global tetap berlaku.
+
+Runtime memvalidasi origin/protokol, produksi HTTPS, PostgreSQL TLS remote terverifikasi dan key/secret. `pnpm env:check` kini memeriksa konfigurasi runtime, bukan hanya field nonsecret Fase 0; koneksi diuji terpisah. CA provider dapat diisi melalui DATABASE_SSL_CA. Semua log unexpected memakai allowlist/requestId tanpa password/PIN/token/SQL. MFA aplikasi dan native concurrency/acceptance perangkat masih belum diuji/diimplementasikan sesuai [checkpoint hardening](hardening.md).

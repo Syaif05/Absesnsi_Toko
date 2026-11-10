@@ -77,3 +77,9 @@ input,textarea{font-size:16px}.demo-strip select{min-height:44px}.record-main st
 }
 
 .report-day-breakdown { grid-column: 1 / -1; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+/* Baseline accessibility hardening; runtime/device acceptance remains separate. */
+:where(a,button,input,textarea,select):focus-visible { outline: 3px solid var(--text-primary); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+ *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

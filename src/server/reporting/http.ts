@@ -1,3 +1,4 @@
+import { reportFailure } from '../security/observability';
 import { NextRequest,NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -15,8 +16,9 @@ export function createReportingHandler(getRuntime:()=>{reporting:ReportingServic
    if(data===null)throw new AuthError('NOT_FOUND',404,'Laporan tidak ditemukan.');
    return NextResponse.json({data},{headers:{'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
   }catch(error){
+      const requestId=randomUUID();if(!(error instanceof AuthError)&&!(error instanceof z.ZodError))reportFailure(error,requestId,"reporting");
    const known=error instanceof AuthError,invalid=error instanceof z.ZodError;
-   return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa rentang tanggal dan filter laporan.':'Monitoring belum dapat dimuat. Coba lagi nanti.',requestId:randomUUID()}},{status:known?error.status:invalid?400:503,headers:{'Cache-Control':'no-store'}});
+   return NextResponse.json({error:{code:known?error.code:invalid?'INVALID_INPUT':'UNAVAILABLE',message:known?error.message:invalid?'Periksa rentang tanggal dan filter laporan.':'Monitoring belum dapat dimuat. Coba lagi nanti.',requestId}},{status:known?error.status:invalid?400:503,headers:{'Cache-Control':'no-store'}});
   }
  };
 }

@@ -35,6 +35,9 @@ export class AuthService {
     if(locked)return {error:invalidLogin()};
     await c.query('update attendance.employee_credentials set failed_attempts=0,locked_until=null where employee_id=$1',[row.id]);
    }
+   // Per-account throttling counts failures since the last successful login.
+   // The independent global budget still limits credential-spraying/CPU usage.
+   await c.query('delete from attendance.auth_rate_limits where key=$1',[throttleKey(this.secret,this.businessId+':login:'+role+':'+code)]);
    const token=newToken();
    await c.query("insert into attendance.auth_sessions(employee_id,token_hash,expires_at) values($1,$2,now()+interval '7 days')",[row.id,tokenHash(token)]);
    await this.audit(c,row.id,'auth.login',row.id);
@@ -78,6 +81,19 @@ export class AuthService {
    await c.query('update attendance.employee_credentials set pin_hash=$1,must_change_pin=false,failed_attempts=0,locked_until=null,changed_at=now() where employee_id=$2',[await hashCredential(next),actor.id]);
    await c.query('update attendance.auth_sessions set revoked_at=now() where employee_id=$1 and revoked_at is null',[actor.id]);
    await this.audit(c,actor.id,'auth.change_pin',actor.id);return null;
+  });if(result)throw result;
+ }
+ async changeOwnerPassword(token:string,currentValue:unknown,nextValue:unknown){
+  const current=secretInput.parse(currentValue),next=passwordSchema.parse(nextValue);
+  if(current===next)throw new AuthError('INVALID_PASSWORD',400,'Password baru harus berbeda.');
+  const result=await this.db.transaction(async c=>{
+   const actor=await this.identity(c,token);requireOwner(actor);
+   if(!await this.limit(c,'change-password:'+actor.id,5))return new AuthError('RATE_LIMITED',429,'Terlalu banyak percobaan. Coba lagi dalam 15 menit.');
+   const credential=(await c.query<{password_hash:string}>('select password_hash from attendance.owner_credentials where employee_id=$1 for update',[actor.id])).rows[0];
+   if(!credential||!await verifyCredential(credential.password_hash,current))return invalidLogin();
+   await c.query('update attendance.owner_credentials set password_hash=$1,changed_at=now() where employee_id=$2',[await hashCredential(next),actor.id]);
+   await c.query('update attendance.auth_sessions set revoked_at=now() where employee_id=$1 and revoked_at is null',[actor.id]);
+   await this.audit(c,actor.id,'auth.change_password',actor.id);return null;
   });if(result)throw result;
  }
  async resetPin(token:string,targetId:string){

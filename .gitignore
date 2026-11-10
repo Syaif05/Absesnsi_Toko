@@ -11,3 +11,9 @@ build/
 .DS_Store
 
 .next-owner-preview/
+
+# Encrypted backups and extracts must never enter version control.
+*.enc
+*.dump
+*.incomplete/
+*.incomplete-*/

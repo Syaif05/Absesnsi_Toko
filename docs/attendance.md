@@ -5,7 +5,7 @@ Halaman nyata: `/attendance`, dari `/account` atau `/my-schedule`. Halaman `/` t
 ## Perilaku
 
 - Kamera depan langsung melalui getUserMedia; HTTPS atau localhost wajib. Ada preview, ambil ulang, penanganan izin, kamera tidak tersedia, GPS timeout/ditolak, dan coba lagi. Tidak ada input galeri.
-- Canvas membatasi sisi terpanjang 960 px dan menurunkan kualitas JPEG menuju target ≤250 KB. Batas keras upload 512 KB. Server memeriksa MIME, signature, dimensi minimal 160 px, batas 16 megapixel, decode JPEG dengan sharp, resize dan re-encode untuk membuang EXIF/payload tambahan.
+- Canvas membatasi sisi terpanjang 960 px dan menurunkan kualitas JPEG menuju target ≤250 KB. Batas keras upload 512 KB. Server memeriksa MIME, signature, dimensi minimal 160 px, batas 4 megapixel (diperketat Fase 9), decode JPEG dengan sharp, resize dan re-encode untuk membuang EXIF/payload tambahan.
 - GPS hanya diminta ketika pengguna membuka alur atau menekan coba GPS. Server menghitung Haversine dan status inside/outside/inaccurate/denied/unavailable terhadap snapshot toko jadwal, bukan toko asal employee atau radius dari client.
 - Check-in tersedia dalam interval published `[starts_at, ends_at)`, termasuk shift lintas tanggal. Tidak ada check-in awal sebelum starts_at atau sesi tanpa jadwal; hubungi owner untuk penugasan. Jadwal/store aktif diperiksa server. Ini batas pencocokan jadwal Fase 6; jendela check-in awal belum menjadi pengaturan bisnis.
 - Satu sesi per jadwal dan maksimal satu sesi terbuka per karyawan. Waktu berasal dari jam PostgreSQL sebelum upload, bukan waktu HP. Late memakai starts_at + grace_minutes pada snapshot. Bukti menyimpan tanggal penuh, aturan lokasi, nama toko dan jam jadwal saat check-in.

@@ -1,3 +1,4 @@
+import { reportFailure } from '../security/observability';
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -69,6 +70,7 @@ export function createScheduleHandler(
         { status, headers: { "Cache-Control": "no-store" } },
       );
     } catch (error) {
+      const requestId=randomUUID();if(!(error instanceof AuthError)&&!(error instanceof z.ZodError))reportFailure(error,requestId,"schedules");
       const known = error instanceof AuthError,
         invalid = error instanceof z.ZodError,
         overlap =
@@ -101,7 +103,7 @@ export function createScheduleHandler(
                   ]),
                 )
               : undefined,
-            requestId: randomUUID(),
+            requestId,
           },
         },
         {
