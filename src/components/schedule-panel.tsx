@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScheduleGenerator } from "./schedule-generator";
 import { Icon, Modal } from "./ui";
 import type {
@@ -52,15 +52,25 @@ const statusLabel = {
   published: "Terbit",
   cancelled: "Dibatalkan",
 };
-function onDay(r: ScheduledShift, day: string, timezone: string) {
-  const z = timezone,
-    start = localParts(r.starts_at, z),
-    end = localParts(r.ends_at, z);
-  return (
-    start.date <= day &&
-    end.date >= day &&
-    (end.date !== day || end.time !== "00:00")
-  );
+const monthLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" });
+const dayLabel = new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeZone: "UTC" });
+const noon = (date: string) => new Date(date + "T12:00Z");
+
+function changeMonth(date: string, delta: number) {
+  const first = noon(date.slice(0, 7) + "-01");
+  first.setUTCMonth(first.getUTCMonth() + delta);
+  return first.toISOString().slice(0, 10);
+}
+
+async function monthSchedules(params: URLSearchParams, isCancelled: () => boolean) {
+  const rows: ScheduledShift[] = [];
+  while (!isCancelled()) {
+    const page = await api<Page<ScheduledShift>>("schedules?" + params);
+    rows.push(...page.items);
+    if (!page.hasMore) break;
+    params.set("offset", String(page.nextOffset));
+  }
+  return rows;
 }
 
 export function SchedulePanel({
@@ -71,13 +81,13 @@ export function SchedulePanel({
   timezone: string;
   initialDate: string;
 }) {
-  const [week, setWeek] = useState(mondayOf(initialDate)),
-    [tab, setTab] = useState<"week" | "templates">("week");
+  const [selectedDate, setSelectedDate] = useState(initialDate),
+    month = changeMonth(selectedDate, 0),
+    nextMonth = changeMonth(month, 1),
+    [tab, setTab] = useState<"month" | "templates">("month");
   const [storeId, setStoreId] = useState(""),
     [employeeId, setEmployeeId] = useState(""),
-    [status, setStatus] = useState(""),
-    [offset, setOffset] = useState(0),
-    [hasMore, setHasMore] = useState(false);
+    [status, setStatus] = useState("");
   const [rows, setRows] = useState<ScheduledShift[]>([]),
     [templates, setTemplates] = useState<ShiftTemplate[]>([]),
     [people, setPeople] = useState<SchedulePerson[]>([]),
@@ -90,6 +100,7 @@ export function SchedulePanel({
   const [editor, setEditor] = useState<{
     kind: "schedule" | "template";
     item?: ScheduledShift | ShiftTemplate;
+    move?: boolean;
   } | null>(null);
   const [confirmation, setConfirmation] = useState<{
     item: ScheduledShift;
@@ -102,9 +113,8 @@ export function SchedulePanel({
       setError("");
       try {
         const params = new URLSearchParams({
-          from: week,
-          to: dayAfter(week, 7),
-          offset: String(offset),
+          from: month,
+          to: nextMonth,
         });
         if (storeId) params.set("storeId", storeId);
         if (employeeId) params.set("employeeId", employeeId);
@@ -113,11 +123,10 @@ export function SchedulePanel({
           choices<ShiftTemplate>("shift-templates"),
           choices<SchedulePerson>("schedule-people"),
           choices<Store>("stores"),
-          api<Page<ScheduledShift>>("schedules?" + params),
+          monthSchedules(params, () => cancelled),
         ]);
         if (!cancelled) {
-          setRows(data.items);
-          setHasMore(data.hasMore);
+          setRows(data);
           setTemplates(ts);
           setPeople(ps);
           setStores(ss);
@@ -135,8 +144,22 @@ export function SchedulePanel({
     return () => {
       cancelled = true;
     };
-  }, [week, storeId, employeeId, status, offset, revision]);
+  }, [month, nextMonth, storeId, employeeId, status, revision]);
   const [generating, setGenerating] = useState(false);
+  const byDate = useMemo(() => {
+    const grouped = new Map<string, ScheduledShift[]>();
+    for (const row of rows) {
+      const start = localParts(row.starts_at, timezone).date;
+      const end = localParts(row.ends_at, timezone);
+      for (let day = start < month ? month : start; day < nextMonth && (day < end.date || (day === end.date && end.time !== "00:00")); day = dayAfter(day, 1)) {
+        const group = grouped.get(day) ?? [];
+        group.push(row);
+        grouped.set(day, group);
+      }
+    }
+    return grouped;
+  }, [rows, month, nextMonth, timezone]);
+  const dayRows = byDate.get(selectedDate) ?? [];
   const reload = () => setRevision((v) => v + 1);
   async function decide(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -165,11 +188,11 @@ export function SchedulePanel({
     <div className="owner-live">
       <nav className="owner-tabs" aria-label="Navigasi jadwal">
         <button
-          className={tab === "week" ? "active" : ""}
-          onClick={() => setTab("week")}
+          className={tab === "month" ? "active" : ""}
+          onClick={() => setTab("month")}
         >
           <Icon name="calendar" />
-          Jadwal mingguan
+          Kalender bulanan
         </button>
         <button
           className={tab === "templates" ? "active" : ""}
@@ -183,11 +206,11 @@ export function SchedulePanel({
         <div className="page-heading">
           <div>
             <h2>
-              {tab === "week" ? "Penugasan minggu ini" : "Template shift"}
+              {tab === "month" ? "Jadwal kerja" : "Template shift"}
             </h2>
             <p>
-              {tab === "week"
-                ? "Draft hanya terlihat oleh owner. Terbitkan agar karyawan dapat melihat jadwal."
+              {tab === "month"
+                ? "Pilih tanggal untuk melihat atau mengatur shift."
                 : "Perubahan template berlaku pada penugasan berikutnya."}
             </p>
           </div>
@@ -195,54 +218,21 @@ export function SchedulePanel({
             className="primary"
             disabled={loading || busy || !!error}
             onClick={() =>
-              setEditor({ kind: tab === "week" ? "schedule" : "template" })
+              setEditor({ kind: tab === "month" ? "schedule" : "template" })
             }
           >
             <Icon name="plus" />
-            Tambah {tab === "week" ? "jadwal" : "template"}
+            Tambah {tab === "month" ? "jadwal" : "template"}
           </button>
         </div>
-        {tab === "week" ? <button className="owner-generator-trigger" disabled={loading || busy || !!error} onClick={()=>setGenerating(true)}><Icon name="calendar"/><span><strong>Buat jadwal otomatis</strong><small>Pilih karyawan, hari kerja, dan jam shift sekaligus.</small></span><Icon name="arrow"/></button> : null}
+        {tab === "month" ? <button className="calendar-generate" disabled={loading || busy || !!error} onClick={()=>setGenerating(true)}><Icon name="calendar"/>Buat jadwal otomatis</button> : null}
         {notice ? (
           <p role="status" className="auth-notice">
             {notice}
           </p>
         ) : null}
-        {tab === "week" ? (
+        {tab === "month" ? (
           <>
-            <div className="schedule-week-controls">
-              <button
-                aria-label="Minggu sebelumnya"
-                onClick={() => {
-                  setWeek(dayAfter(week, -7));
-                  setOffset(0);
-                }}
-              >
-                ←
-              </button>
-              <label>
-                Minggu mulai
-                <input
-                  type="date"
-                  value={week}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setWeek(mondayOf(e.target.value));
-                      setOffset(0);
-                    }
-                  }}
-                />
-              </label>
-              <button
-                aria-label="Minggu berikutnya"
-                onClick={() => {
-                  setWeek(dayAfter(week, 7));
-                  setOffset(0);
-                }}
-              >
-                →
-              </button>
-            </div>
             <div className="owner-filters">
               <label>
                 Toko
@@ -250,7 +240,6 @@ export function SchedulePanel({
                   value={storeId}
                   onChange={(e) => {
                     setStoreId(e.target.value);
-                    setOffset(0);
                   }}
                 >
                   <option value="">Semua toko</option>
@@ -267,7 +256,6 @@ export function SchedulePanel({
                   value={employeeId}
                   onChange={(e) => {
                     setEmployeeId(e.target.value);
-                    setOffset(0);
                   }}
                 >
                   <option value="">Semua karyawan</option>
@@ -284,7 +272,6 @@ export function SchedulePanel({
                   value={status}
                   onChange={(e) => {
                     setStatus(e.target.value);
-                    setOffset(0);
                   }}
                 >
                   <option value="">Semua status</option>
@@ -341,115 +328,117 @@ export function SchedulePanel({
           </section>
         ) : (
           <>
-            <div className="schedule-days">
-              {Array.from({ length: 7 }, (_, i) => dayAfter(week, i)).map(
-                (day) => (
-                  <section className="panel" key={day}>
-                    <h2>
-                      {new Intl.DateTimeFormat("id-ID", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "short",
-                        timeZone: "UTC",
-                      }).format(new Date(day + "T12:00Z"))}
-                    </h2>
-                    {rows
-                      .filter((r) => onDay(r, day, timezone))
-                      .map((r) => {
-                        const zone = String(
-                            r.rule_snapshot.timezone ?? timezone,
-                          ),
-                          start = localParts(r.starts_at, zone),
-                          end = localParts(r.ends_at, zone);
-                        return (
-                          <article key={r.id} className="scheduled-card">
-                            <div className="section-title">
-                              <strong>{r.employee_name}</strong>
-                              <span className={"schedule-status " + r.status}>
-                                {statusLabel[r.status]}
-                              </span>
-                            </div>
-                            <p>{r.store_name}</p>
-                            {zone !== timezone ? <small>{zone}</small> : null}
-                            <p className="scheduled-time">
-                              {start.time}–{end.time}
-                              {start.date !== end.date ? " (+1 hari)" : ""}
-                            </p>
-                            {start.date !== day ? (
-                              <small>Lanjutan shift dari {start.date}</small>
-                            ) : null}
-                            {r.has_attendance ? (
-                              <small>Sudah memiliki absensi</small>
-                            ) : null}
-                            <div className="row-actions">
-                              <button
-                                disabled={r.status === "cancelled" || busy}
-                                onClick={() =>
-                                  setEditor({ kind: "schedule", item: r })
-                                }
-                              >
-                                Edit
-                              </button>
-                              {r.status === "draft" ? (
-                                <button
-                                  disabled={busy}
-                                  onClick={() =>
-                                    setConfirmation({
-                                      item: r,
-                                      status: "published",
-                                    })
-                                  }
-                                >
-                                  Terbitkan
-                                </button>
-                              ) : null}
-                              {r.status !== "cancelled" ? (
-                                <button
-                                  disabled={busy}
-                                  onClick={() =>
-                                    setConfirmation({
-                                      item: r,
-                                      status: "cancelled",
-                                    })
-                                  }
-                                >
-                                  Batalkan
-                                </button>
-                              ) : null}
-                            </div>
-                          </article>
-                        );
-                      })}
-                    {!rows.some((r) => onDay(r, day, timezone)) ? (
-                      <p className="day-empty">{offset > 0 || hasMore ? "Tidak ada jadwal pada halaman ini." : "Belum ada jadwal."}</p>
+            <section className="month-calendar" aria-label="Kalender jadwal">
+              <div className="calendar-toolbar">
+                <h2>{monthLabel.format(noon(month))}</h2>
+                <div>
+                  <button aria-label="Bulan sebelumnya" onClick={() => setSelectedDate(changeMonth(month, -1))}>←</button>
+                  <button onClick={() => setSelectedDate(initialDate)}>Hari ini</button>
+                  <button aria-label="Bulan berikutnya" onClick={() => setSelectedDate(nextMonth)}>→</button>
+                </div>
+              </div>
+              <div className="calendar-grid">
+                {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map(day => <span className="calendar-weekday" key={day}>{day}</span>)}
+                {Array.from({ length: Math.round((+noon(nextMonth) - +noon(month)) / 86400000) }, (_, index) => {
+                  const day = dayAfter(month, index);
+                  const shifts = byDate.get(day) ?? [];
+                  return (
+                    <button key={day} className="calendar-day" aria-pressed={day === selectedDate}
+                      aria-current={day === initialDate ? "date" : undefined}
+                      aria-label={dayLabel.format(noon(day)) + ", " + shifts.length + " jadwal"}
+                      style={index === 0 ? { gridColumnStart: Math.round((+noon(month) - +noon(mondayOf(month))) / 86400000) + 1 } : undefined}
+                      onClick={() => setSelectedDate(day)}>
+                      <span className="calendar-date-number">{index + 1}</span>
+                      {shifts.length > 0 ? <span className="calendar-count">{shifts.length}<span> shift</span></span> : null}
+                      {shifts.slice(0, 1).map(shift => <span key={shift.id} className={"calendar-preview " + shift.status}>{shift.employee_name}</span>)}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+            <section className="calendar-detail panel">
+              <div className="calendar-toolbar">
+                <h2>{dayLabel.format(noon(selectedDate))}</h2>
+                <button className="primary" disabled={busy} onClick={() => setEditor({ kind: "schedule" })}>Tambah shift</button>
+              </div>
+              {dayRows.length === 0 ? <p className="day-empty">Tidak ada shift yang sesuai filter.</p> : null}
+              {dayRows.map(r => {
+                const zone = String(r.rule_snapshot.timezone ?? timezone);
+                const start = localParts(r.starts_at, zone);
+                const end = localParts(r.ends_at, zone);
+                return (
+                  <article key={r.id} className="scheduled-card">
+                    <div className="section-title">
+                      <strong>{r.employee_name}</strong>
+                      <span className={"schedule-status " + r.status}>
+                        {statusLabel[r.status]}
+                      </span>
+                    </div>
+                    <p>{r.store_name}</p>
+                    {zone !== timezone ? <small>{zone}</small> : null}
+                    <p className="scheduled-time">
+                      {start.time}–{end.time}
+                      {start.date !== end.date ? " (+1 hari)" : ""}
+                    </p>
+                    {start.date !== selectedDate ? (
+                      <small>Lanjutan shift dari {start.date}</small>
                     ) : null}
-                  </section>
-                ),
-              )}
-            </div>
-            <div className="pagination">
-              <button
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - 50))}
-              >
-                Sebelumnya
-              </button>
-              <span>Halaman {Math.floor(offset / 50) + 1}</span>
-              <button
-                disabled={!hasMore}
-                onClick={() => setOffset(offset + 50)}
-              >
-                Berikutnya
-              </button>
-            </div>
+                    {r.has_attendance ? (
+                      <small>Sudah memiliki absensi</small>
+                    ) : null}
+                    <div className="row-actions">
+                      <button
+                        disabled={r.status === "cancelled" || busy}
+                        onClick={() =>
+                          setEditor({ kind: "schedule", item: r })
+                        }
+                      >
+                        Edit
+                      </button>
+                      {r.status !== "cancelled" && !r.has_attendance ? (
+                        <button disabled={busy} onClick={() => setEditor({ kind: "schedule", item: r, move: true })}>
+                          Pindahkan
+                        </button>
+                      ) : null}
+                      {r.status === "draft" ? (
+                        <button
+                          disabled={busy}
+                          onClick={() =>
+                            setConfirmation({
+                              item: r,
+                              status: "published",
+                            })
+                          }
+                        >
+                          Terbitkan
+                        </button>
+                      ) : null}
+                      {r.status !== "cancelled" ? (
+                        <button
+                          disabled={busy}
+                          onClick={() =>
+                            setConfirmation({
+                              item: r,
+                              status: "cancelled",
+                            })
+                          }
+                        >
+                          Batalkan
+                        </button>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
           </>
         )}
       </main>
-      {generating ? <ScheduleGenerator people={people} stores={stores} templates={templates} date={week} timezone={timezone} onClose={()=>setGenerating(false)} onSaved={(count,published)=>{setGenerating(false);setNotice(published ? `${count} jadwal berhasil dibuat dan diterbitkan.` : `${count} draft jadwal berhasil dibuat. Periksa lalu terbitkan jadwal.`);reload()}}/> : null}
+      {generating ? <ScheduleGenerator people={people} stores={stores} templates={templates} date={selectedDate} timezone={timezone} onClose={()=>setGenerating(false)} onSaved={(count,published)=>{setGenerating(false);setNotice(published ? `${count} jadwal berhasil dibuat dan diterbitkan.` : `${count} draft jadwal berhasil dibuat. Periksa lalu terbitkan jadwal.`);reload()}}/> : null}
       {editor ? (
         <Modal
           title={
-            (editor.item ? "Edit " : "Tambah ") +
+            (editor.move ? "Pindahkan " : editor.item ? "Edit " : "Tambah ") +
             (editor.kind === "template" ? "template shift" : "jadwal")
           }
           onClose={() => {
@@ -462,9 +451,12 @@ export function SchedulePanel({
             people={people}
             stores={stores}
             timezone={timezone}
-            date={week}
+            date={selectedDate}
+            defaultEmployeeId={employeeId}
+            defaultStoreId={storeId}
             onBusy={setBusy}
-            onSaved={() => {
+            onSaved={(date) => {
+              if (date) setSelectedDate(date);
               setEditor(null);
               setNotice("Perubahan jadwal berhasil disimpan.");
               reload();
@@ -542,19 +534,24 @@ function ScheduleEditor({
   stores,
   timezone,
   date,
+  defaultEmployeeId,
+  defaultStoreId,
   onSaved,
   onBusy,
 }: {
   editor: {
     kind: "template" | "schedule";
     item?: ScheduledShift | ShiftTemplate;
+    move?: boolean;
   };
   templates: ShiftTemplate[];
   people: SchedulePerson[];
   stores: Store[];
   timezone: string;
   date: string;
-  onSaved: () => void;
+  defaultEmployeeId: string;
+  defaultStoreId: string;
+  onSaved: (date?: string) => void;
   onBusy: (value: boolean) => void;
 }) {
   const template =
@@ -602,8 +599,8 @@ function ScheduleEditor({
                   ...(template ? { version: template.version } : {}),
                 }
               : {
-                  employeeId: form.get("employeeId"),
-                  storeId: form.get("storeId"),
+                  employeeId: editor.move ? schedule?.employee_id : form.get("employeeId"),
+                  storeId: editor.move ? schedule?.store_id : form.get("storeId"),
                   templateId: templateId || null,
                   date: form.get("date"),
                   startTime,
@@ -623,7 +620,7 @@ function ScheduleEditor({
             editor.item ? "PATCH" : "POST",
             body,
           );
-          onSaved();
+          onSaved(editor.kind === "schedule" ? String(form.get("date")) : undefined);
         } catch (err) {
           setError(
             err instanceof ScheduleRequestError
@@ -636,6 +633,13 @@ function ScheduleEditor({
         }
       }}
     >
+      {editor.move && schedule ? (
+        <>
+          <p>{schedule.employee_name} · {schedule.store_name} · {startTime}–{endTime}{cross ? " (+1 hari)" : ""}</p>
+          <label>Tanggal tujuan<input name="date" type="date" required /></label>
+          <p className="hint">Shift ini akan dipindahkan dari {start?.date}. Jika tidak ada shift lain, tanggal asal menjadi hari tanpa jadwal.</p>
+        </>
+      ) : <>
       {editor.kind === "template" ? (
         <label>
           Nama template
@@ -653,7 +657,7 @@ function ScheduleEditor({
             <select
               name="employeeId"
               required
-              defaultValue={schedule?.employee_id ?? ""}
+              defaultValue={schedule?.employee_id ?? defaultEmployeeId}
               disabled={schedule?.has_attendance}
             >
               <option value="" disabled>
@@ -684,7 +688,7 @@ function ScheduleEditor({
             <select
               name="storeId"
               required
-              defaultValue={schedule?.store_id ?? ""}
+              defaultValue={schedule?.store_id ?? defaultStoreId}
               disabled={schedule?.has_attendance}
             >
               <option value="" disabled>
@@ -797,6 +801,7 @@ function ScheduleEditor({
           Waktu mengikuti {zone}. Jadwal baru disimpan sebagai draft.
         </p>
       )}
+      </>}
       {schedule?.has_attendance ? (
         <label className="checkbox-field">
           <input required type="checkbox" name="confirmWithAttendance" />
