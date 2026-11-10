@@ -339,7 +339,7 @@ export function OwnerPanel({
             {label}
           </button>
         ))}
-        <Link href="/owner/approvals" className="text-button">Persetujuan</Link><Link href="/owner/schedules"><Icon name="calendar"/>Jadwal</Link>
+        <Link href="/owner/dashboard" className="text-button">Dashboard</Link><Link href="/owner/reports" className="text-button">Laporan</Link><Link href="/owner/approvals" className="text-button">Persetujuan</Link><Link href="/owner/schedules"><Icon name="calendar"/>Jadwal</Link>
       </nav>
       <main className="owner-content">
         <div className="page-heading">

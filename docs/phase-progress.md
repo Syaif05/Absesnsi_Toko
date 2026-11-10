@@ -140,3 +140,21 @@ Implementasi kode/backend selesai; pengujian UI/UX tetap ditunda sesuai instruks
 File utama: src/server/approvals (service/validation/http/models), src/components/approvals-panel.tsx, halaman owner/approvals dan my-approvals, routes API approvals dan me/correction-targets, src/server/attendance/state.ts, perubahan auth locking dan integrasi absensi, drizzle/0007_approval_corrections.sql, supabase/sql/001_schema_all.sql, tests/integration/approvals.test.ts, docs/approvals.md. Navigasi owner/employee dan CSS diperbarui.
 
 Menjalankan: setelah koneksi PostgreSQL dapat dijangkau, `pnpm db:migrate`, `pnpm dev`; login owner ke `/owner/approvals` atau employee ke `/my-approvals`. Akun owner operasional masih perlu bootstrap sesuai panduan auth. Dokumen approvals.md memuat kontrak, aturan status, concurrency dan batas verifikasi. GitHub tidak dipush; tidak ada seed atau data employee cloud yang dibuat.
+
+## Fase 8 — Monitoring & laporan dasar (10 November 2026)
+
+Implementasi kode/backend selesai. Penerimaan mobile/laptop tetap ditunda karena pengguna meminta tidak melakukan pengujian UI/UX. Tidak memulai Fase 9.
+
+- [x] Owner `/owner/dashboard`: KPI sah/menunggu/ditolak/belum tercatat/belum dimulai, penanda terlambat/missing checkout, jumlah pending request, rekap harian, status toko dan aktivitas terbaru.
+- [x] `/owner/reports`: filter tanggal/toko, filter kategori pada riwayat, ringkasan karyawan, detail sesi/waktu efektif vs bukti asli, selfie terotorisasi, GPS/aturan snapshot dan histori keputusan/koreksi.
+- [x] Hitung satu row per jadwal sebelum agregasi, bukan join raw event/approval. Dua event satu sesi tidak menggandakan KPI; kategori disjoint. Pending koreksi terpisah dari status absensi resmi; jumlah employee adalah UUID unik.
+- [x] Tanggal mulai shift snapshot menjaga histori saat jadwal diedit; shift malam dihitung sekali pada tanggal mulai. Aktivitas memakai tanggal kejadian sebenarnya. Scope toko berdasarkan penugasan shift, termasuk lintas toko, cancelled dengan histori serta employee/toko nonaktif.
+- [x] Pagination 20 pada riwayat, cabang, aktivitas dan histori permintaan; pencarian/pagination opsi toko tanpa angka tetap dua toko. Refresh 60 detik saat tab terlihat/online/halaman pertama, tanpa request siklus tumpang tindih, abort ketika filter berubah; error/offline tidak berubah menjadi data contoh atau sukses palsu.
+- [x] API read-only, guard owner/business/ownership, response no-store tanpa credential/photo_path; employee hanya boleh detail sesi sendiri. Parallel fetch, agregasi SQL, statement timeout, indeks baru 0008, SQL gabungan diperbarui; 18 tabel RLS tetap.
+- [x] **113 tes backend lulus** (92 regresi + 21 reporting), lint, TypeScript dan build diperiksa. Kasus dua/tiga toko, >20 toko, pagination/tie timestamps, pending/ditolak vs sah, missing/corrected, timezone/shift malam, histori immutable dan permission tercakup.
+- [ ] Migrasi cloud 0006–0008 belum diterapkan: pemeriksaan direct PostgreSQL Fase 8 masih ENOTFOUND. Konektor terakhir gagal transport pada Fase 7. Cloud terakhir terverifikasi sampai 0005; bucket foto tidak diubah.
+- [ ] Tidak menjalankan tests/ui, browser, screenshot, viewport/perangkat, atau UI/UX sesuai arahan pengguna. Polling/responsivitas belum diuji runtime browser; benchmark volume besar dan native PostgreSQL multikoneksi juga belum dilakukan.
+
+File utama: src/server/reporting (service/query/validation/http/models/page), src/components/reporting-panel.tsx, halaman owner/dashboard dan owner/reports, routes API dashboard/attendance/employee attendance, schema/index migration 0008 dan SQL gabungan, tests/integration/reporting.test.ts, docs/reporting.md. Navigasi akun/pengelolaan dan CSS diperbarui. Tidak ada data demo di halaman nyata, tidak ada seed atau foto/karyawan cloud baru, tidak ada push GitHub.
+
+Menjalankan setelah DATABASE_URL dapat dijangkau: `pnpm db:migrate`, `pnpm dev`; login owner lalu buka `/owner/dashboard` dan `/owner/reports`. Bootstrap owner operasional masih mengikuti panduan auth. Definisi angka, tanggal akhir API eksklusif vs UI inklusif, prioritas kategori, pagination dan batas verifikasi dijelaskan di docs/reporting.md. Pagination offset dapat bergeser bila aktivitas baru masuk antar-request; evaluasi cursor/performa pada hardening berikutnya.

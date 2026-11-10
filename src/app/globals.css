@@ -42,3 +42,38 @@ input,textarea{font-size:16px}.demo-strip select{min-height:44px}.record-main st
 .approval-confirm, .correction-change { border-top: 1px solid var(--border); padding-block: 16px; }
 .approval-selfie { display: block; width: 100%; height: auto; max-height: 480px; object-fit: contain; border-radius: 12px; }
 @media (min-width: 768px) { .approval-filters { grid-template-columns: 1fr 1fr auto; align-items: end; } }
+
+/* Phase 8: dashboard and report controls remain in the normal mobile flow. */
+.reporting-page { width: 100%; max-width: 1180px; margin-inline: auto; padding: 20px 14px max(30px, env(safe-area-inset-bottom)); }
+.reporting-page .panel { padding: 18px; margin-block: 18px; min-width: 0; }
+.reporting-page nav { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.reporting-page nav a { display: inline-flex; min-height: 44px; align-items: center; }
+.report-filters, .report-store-filter, .report-detail { display: grid; gap: 12px; }
+.report-filters label, .report-list-heading label { display: grid; gap: 8px; }
+.report-filters input, .report-filters select, .report-list-heading select { min-width: 0; width: 100%; min-height: 44px; padding: 10px; font: inherit; border: 1px solid var(--border); border-radius: 8px; }
+.report-refresh, .report-selected, .report-list-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.report-kpis { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.reporting-page .report-kpi { margin-block: 8px; display: grid; gap: 12px; }
+.report-kpi > strong { font-size: 30px; line-height: 1.1; }
+.report-kpi-accent { background: var(--accent); color: white; }
+.report-attention { display: grid; gap: 10px; }
+.report-columns { display: grid; gap: 16px; }
+.report-branches, .report-activity, .report-daily { list-style: none; margin: 0; padding: 0; }
+.report-branches li, .report-activity li, .report-evidence { padding-block: 16px; display: grid; gap: 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.report-daily li { display: grid; grid-template-columns: 88px minmax(0,1fr) 30px; gap: 10px; align-items: center; padding-block: 8px; font-size: 13px; }
+.report-bar { display: flex; min-height: 14px; border-radius: 5px; overflow: hidden; background: var(--border); }
+.report-segment.valid { background: var(--success); }.report-segment.pending { background: var(--warning); }.report-segment.rejected { background: var(--danger); }.report-segment.not_recorded { background: #a4aebb; }.report-segment.upcoming { background: var(--accent); }
+.report-table { display: block; width: 100%; border-collapse: collapse; }
+.report-table thead, .report-sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.report-table tbody, .report-table tr { display: block; width: 100%; }
+.report-table tr { border-bottom: 1px solid var(--border); padding-block: 14px; }
+.report-table td { display: grid; gap: 5px; padding: 8px 0; overflow-wrap: anywhere; }
+.report-table td::before { content: attr(data-label); color: var(--text-secondary); font-size: 13px; }
+.report-table td small, .report-table td span { display: block; }
+.report-table td small { color: var(--text-secondary); }
+@media (min-width: 768px) {
+ .reporting-page { padding: 32px; }.report-filters { grid-template-columns: 1fr 1fr 2fr auto; align-items: start; }.report-kpis { grid-template-columns: repeat(5,minmax(0,1fr)); }.report-columns { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .report-table { display: table; table-layout: fixed; }.report-table thead { position: static; width: auto; height: auto; clip-path: none; white-space: normal; display: table-header-group; }.report-table tbody { display: table-row-group; }.report-table tr { display: table-row; }.report-table td, .report-table th { display: table-cell; vertical-align: top; text-align: left; padding: 12px 8px; }.report-table td::before { display: none; }
+}
+
+.report-day-breakdown { grid-column: 1 / -1; color: var(--text-secondary); overflow-wrap: anywhere; }

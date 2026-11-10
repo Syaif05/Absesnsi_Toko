@@ -1,6 +1,6 @@
 # PRINCES Attendance
 
-Aplikasi kehadiran Princes dengan implementasi Fase 0–7: autentikasi, pengelolaan owner, jadwal dan absensi selfie/GPS. Halaman `/` tetap prototipe DEMO; alur data nyata dimulai dari `/login`. Koneksi database cloud dan penerimaan perangkat masih memiliki batas yang dicatat di checkpoint.
+Aplikasi kehadiran Princes dengan implementasi Fase 0–8: autentikasi, pengelolaan owner, jadwal dan absensi selfie/GPS. Halaman `/` tetap prototipe DEMO; alur data nyata dimulai dari `/login`. Koneksi database cloud dan penerimaan perangkat masih memiliki batas yang dicatat di checkpoint.
 
 ## Menjalankan lokal
 
@@ -42,7 +42,7 @@ Skema dan migrasi PostgreSQL sudah tersedia. Jalankan `pnpm test` untuk pengujia
 
 Halaman akun tersedia di `/login` dan `/account`. Tanpa database yang dikonfigurasi, login menampilkan layanan belum tersedia. Petunjuk bootstrap owner, konfigurasi dan batas pengujian ada di [docs/authentication.md](docs/authentication.md).
 
-Semua SQL database sampai Fase 7 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
+Semua SQL database sampai Fase 8 tersedia di [supabase/sql/001_schema_all.sql](supabase/sql/001_schema_all.sql), dengan [petunjuk instalasi](supabase/README.md). File ini hanya untuk database kosong; database yang sudah terpasang diperbarui lewat `pnpm db:migrate`. Regenerasi dengan `pnpm db:export:supabase`.
 
 ## Administrasi owner Fase 4
 
@@ -67,3 +67,9 @@ Jalankan `pnpm db:migrate`, `pnpm storage:setup`, lalu `pnpm dev`. `pnpm test:se
 Owner: `/owner/approvals` (dari pengelolaan usaha). Karyawan: `/my-approvals` (dari Absensi). Inbox, detail bukti, konfirmasi approve/reject, pengajuan koreksi waktu/missing check-in/out dan histori asli sudah terhubung ke API. [Panduan Fase 7](docs/approvals.md) memuat kontrak, transaksi, status, migrasi dan hasil tes.
 
 Jalankan migrasi incremental sebelum memakai halaman ini. Migrasi 0006–0007 masih menunggu koneksi database cloud; direct hostname masih gagal DNS dan konektor belum dapat diakses. Pengujian UI/UX tetap ditunda, GitHub tidak dipush.
+
+## Monitoring & laporan Fase 8
+
+Owner membuka `/owner/dashboard` dari akun; laporan di `/owner/reports`. KPI sah/pending/ditolak/belum tercatat/belum dimulai dihitung per jadwal agar event masuk-pulang tidak menggandakan angka. Filter toko/tanggal, aktivitas, ringkasan karyawan, detail sesi/bukti asli dan pagination sudah memakai API.
+
+[Panduan reporting](docs/reporting.md) menjelaskan definisi KPI, shift malam, polling 60 detik, otorisasi, indeks dan verifikasi. Jalankan `pnpm db:migrate` setelah koneksi PostgreSQL pulih, lalu `pnpm dev`. Migrasi cloud 0006–0008 masih pending karena DNS; pengujian UI/UX tetap ditunda. Tidak ada push GitHub.

@@ -388,6 +388,11 @@ END $$;
 CREATE TRIGGER approval_content_immutable BEFORE UPDATE OR DELETE ON attendance.approval_requests FOR EACH ROW EXECUTE FUNCTION attendance.protect_request_content();
 REVOKE ALL ON FUNCTION attendance.protect_request_content() FROM PUBLIC;
 
+-- SOURCE: drizzle/0008_monitoring_indexes.sql
+CREATE INDEX "approval_requests_target_type_target_id_index" ON "attendance"."approval_requests" USING btree ("target_type","target_id");--> statement-breakpoint
+CREATE INDEX "approval_requests_decided_at_id_index" ON "attendance"."approval_requests" USING btree ("decided_at","id") WHERE "attendance"."approval_requests"."decided_at" is not null;--> statement-breakpoint
+CREATE INDEX "attendance_events_recorded_at_id_index" ON "attendance"."attendance_events" USING btree ("recorded_at","id");--> statement-breakpoint
+CREATE INDEX "schedules_starts_at_id_index" ON "attendance"."schedules" USING btree ("starts_at","id");
 CREATE SCHEMA IF NOT EXISTS drizzle;
 CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('1f8f835b03ffcd95bfd7d932a4df04baf6f4c34296b7c928a060371e6ceac427',1794222816659);
@@ -398,4 +403,5 @@ INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('dfe99584630bb
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('d89c81281cde4d53adeb73327bc7ef1d232eb640928c79b818e199dcbe17248b',1794228837931);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('fa39cfaa1e4a86599a202f3000764ed9b247d886722c11ba536d4edf02c2e118',1794273586916);
 INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('3d4df84857ca91524b9cecef5a10c637386a2e999e1ac50556ce35cba70bbd49',1794274154113);
+INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES ('b2deec8f3a69a3c134f7eb025bcae160cad1481bb111595c80e60321d36bd8f3',1794277634891);
 COMMIT;

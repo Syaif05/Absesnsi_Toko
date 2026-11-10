@@ -1,6 +1,6 @@
 # File SQL Supabase
 
-`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–7 untuk **database kosong**. Berisi schema privat attendance, 18 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
+`sql/001_schema_all.sql` adalah gabungan seluruh migrasi Fase 2–8 untuk **database kosong**. Berisi schema privat attendance, 18 tabel, constraints, indeks, trigger, RLS dan jurnal Drizzle. Tidak memuat data demo, foto, PIN, password atau akun yang otomatis aktif. Jangan jalankan ulang pada database yang sudah berisi schema attendance.
 
 Pilih salah satu cara instalasi:
 
@@ -30,3 +30,7 @@ Bucket attendance-photos privat dibuat dan diverifikasi melalui API Storage. Set
 ## Persetujuan Fase 7
 
 Migrasi 0007 menambah provenance koreksi/snapshot sesi, idempotency/context permintaan, indeks workflow dan trigger histori immutable. Tabel tetap 18 dengan RLS. File gabungan sudah mencakup Fase 7 untuk database baru. Cloud masih menunggu penerapan incremental 0006 dan 0007 karena koneksi PostgreSQL/konektor belum tersedia. Lihat `docs/approvals.md`; tidak menghapus histori lama atau mengubah bucket Storage.
+
+## Monitoring Fase 8
+
+Migrasi 0008 menambah empat indeks read reporting; tabel tetap 18, tanpa perubahan data/izin. File gabungan memuat seluruh migrasi sampai Fase 8 untuk database kosong. Cloud masih pending 0006–0008 karena direct hostname PostgreSQL gagal DNS; tidak mengulang SQL gabungan pada project existing. Panduan monitoring dan otorisasi terdapat di `docs/reporting.md`.

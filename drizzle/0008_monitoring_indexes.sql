@@ -1,0 +1,4 @@
+CREATE INDEX "approval_requests_target_type_target_id_index" ON "attendance"."approval_requests" USING btree ("target_type","target_id");--> statement-breakpoint
+CREATE INDEX "approval_requests_decided_at_id_index" ON "attendance"."approval_requests" USING btree ("decided_at","id") WHERE "attendance"."approval_requests"."decided_at" is not null;--> statement-breakpoint
+CREATE INDEX "attendance_events_recorded_at_id_index" ON "attendance"."attendance_events" USING btree ("recorded_at","id");--> statement-breakpoint
+CREATE INDEX "schedules_starts_at_id_index" ON "attendance"."schedules" USING btree ("starts_at","id");

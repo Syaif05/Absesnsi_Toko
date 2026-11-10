@@ -64,3 +64,11 @@ Detail recovery, transaction dan signed URL di `docs/attendance.md`. Endpoint ke
 | GET | `/api/v1/me/correction-targets` | Jadwal sendiri yang dapat diajukan, effective times dan timezone |
 
 Daftar: view=mine/inbox (inbox owner saja), status=all/pending/approved/rejected, type opsional, storeId opsional, offset. Maksimal 20 baris. POST JSON, Origin sama, body ≤4096 byte. Koreksi memakai requestKey UUID dan changes satu/dua field check_in_at/check_out_at dengan ISO8601 bertanda zona. Keputusan wajib catatan dan konfirmasi; final. Konflik baseline, pending duplikat atau keputusan ulang: 409. Rate limit persisten 20 pengajuan baru dan 60 keputusan per 15 menit per actor. Bukti asli tidak ditimpa. Kontrak lengkap dan contoh ada di [approvals.md](approvals.md).
+
+## API Fase 8 — Monitoring dan laporan
+
+GET owner: `/api/v1/dashboard/summary`, `/dashboard/stores`, `/dashboard/activity`, `/attendance`, `/employees/:id/attendance`. Detail `/api/v1/attendance/:sessionId` untuk owner satu bisnis atau employee pemilik sesi.
+
+Query utama: from/to tanggal ISO (akhir eksklusif, 1–31 hari), storeId?/employeeId?. Daftar menambah offset dan maksimum 20 baris. Riwayat attendance menerima category=all/valid/pending/rejected/not_recorded/upcoming; KPI tidak memakai category. Endpoint employee menolak employeeId query karena identitas sudah pada path. Detail memakai requestOffset untuk 20 histori permintaan per halaman. Seluruhnya GET/no-store, role/business/ownership server-side; data di luar scope 404 dan endpoint global untuk employee/manager 403.
+
+Summary: total jadwal = valid+pending+rejected+notRecorded+upcoming; recorded = valid+pending+rejected. Urutan kategori rejection > pending > sah > belum dimulai/belum tercatat. Pending request dihitung terpisah dari kategori absensi. Histori/KPI memakai awal shift snapshot; activity memakai waktu kejadian. Detail dan contoh perilaku di [reporting.md](reporting.md).
