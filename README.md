@@ -94,3 +94,9 @@ Paket standalone, Docker multi-stage (web non-root + ops PostgreSQL 17), Compose
 `pnpm release:build` membuat `.next/standalone` beserta static/public dan memeriksa secret. Setelah ENV produksi disiapkan, `pnpm release:check` memeriksa kesiapan teknis; `pnpm release:smoke https://DOMAIN` hanya GET JSON tanpa UI. Semua langkah instalasi, bootstrap satu kali, HTTPS, backup dan rollback ada dalam runbook.
 
 Checkpoint lokal: **136 tes backend lulus**, typecheck/lint/build standalone dan scanner browser lulus. Docker/image Linux belum dibangun karena Docker tidak tersedia; native backup/restore, deployment publik dan pilot toko belum dilakukan. Koneksi PostgreSQL masih ENOTFOUND; metadata bucket privat/JPEG/512 KiB terverifikasi melalui REST. Konfigurasi development ditolak preflight produksi sebagaimana seharusnya. Target hosting/domain dan project milik penerima belum dikonfirmasi, konektor cloud gagal transport. UI/UX tetap tidak diuji sesuai permintaan pengguna. Fase 10 belum memenuhi acceptance pilot/go-live; GitHub tidak dipush.
+
+## Publikasi GitHub dan Vercel — 10 November 2026
+
+Repository kini [Syaif05/Absesnsi_Toko](https://github.com/Syaif05/Absesnsi_Toko); website [absesnsi-toko.vercel.app](https://absesnsi-toko.vercel.app) berstatus READY. Supabase `absensi kita` terhubung melalui Session pooler/TLS verified, migrasi canonical 0000–0009 sudah diterapkan, smoke API HTTPS lulus. ENV rahasia hanya pada server, tidak masuk GitHub. Detail terkini dan bukti ada pada [status deployment](docs/deployment-status.md); ini memperbarui blocker koneksi/publikasi di checkpoint sebelumnya.
+
+Akun owner pertama belum bootstrap, jadi belum ada kredensial login awal. Preflight tetap belum menyatakan technicalReady karena owner belum dibuat. UI/UX, perangkat, native restore dan pilot tetap belum diuji/disetujui; target Vercel production bukan persetujuan go-live usaha.
